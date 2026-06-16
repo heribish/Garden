@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="sw">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" data-i18n="meta.description" content="Order groceries and essentials in Dar es Salaam — same-day delivery, M-Pesa, and cash on delivery." />
+    <meta name="theme-color" content="#0d9488" />
+    <title data-i18n="meta.title">garden — Groceries & delivery in Dar</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/tzshop.css" />
+  </head>
+  <body class="ts-skin-light ts-page-shop">
+    <a class="tz-skip" href="#main" data-i18n="skip">Skip to shopping</a>
+
+    <header class="ts-topnav" role="navigation" aria-label="Main">
+      <a class="ts-brand" href="/">
+        <span class="ts-brand-mark" aria-hidden="true">G</span>
+        <span data-i18n="nav.brand">arden</span>
+      </a>
+      <nav class="ts-nav">
+        <a href="/account" data-i18n="auth.navAccount">Account</a>
+        <a href="/account#vendor" id="navVendor" data-i18n="nav.sell">Sell on Garden</a>
+        <a href="/account#driver" id="navDriver" data-i18n="nav.deliver">Deliver with Garden</a>
+        <a href="/admin" id="navAdmin" data-i18n="nav.admin" hidden>Operations</a>
+        <div class="ts-location-pill" id="locationPill" role="status" aria-live="polite" title="">
+          <span class="ts-location-pill__dot" aria-hidden="true"></span>
+          <span id="locationPillText">Dar es Salaam</span>
+        </div>
+        <select id="langSelect" aria-label="Language" style="padding: 0.35rem 0.5rem; border-radius: 8px; border: 1px solid var(--tz-border); background: var(--tz-elev); color: var(--tz-text); font-size: 0.78rem">
+          <option value="sw">Kiswahili</option>
+          <option value="en">English</option>
+        </select>
+        <button type="button" class="ts-account-btn" id="btnAuthOpen" aria-haspopup="dialog" aria-controls="authModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21a8 8 0 1 0-16 0" />
+            <circle cx="12" cy="8" r="4" />
+          </svg>
+          <span id="btnAuthLabel" data-i18n="auth.navSignIn">Sign in</span>
+        </button>
+      </nav>
+    </header>
+
+    <div id="authModal" class="ts-auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <div class="ts-auth-modal__backdrop" data-close-auth tabindex="-1"></div>
+      <div class="ts-auth-modal__panel">
+        <button type="button" class="ts-auth-modal__close" data-close-auth aria-label="Close">&times;</button>
+
+        <div id="authChooser">
+          <h2 id="authModalTitle" data-i18n="auth.welcomeTitle">Welcome to Garden</h2>
+          <p class="ts-auth-modal__lead" data-i18n="auth.welcomeLead">Do you already have an account?</p>
+          <button type="button" class="btn btn--primary btn--block" id="authChooseSignIn" data-i18n="auth.haveAccount">
+            Yes — sign in
+          </button>
+          <button type="button" class="btn btn--secondary btn--block" id="authChooseSignUp" style="margin-top: 0.5rem" data-i18n="auth.newAccount">
+            No — create an account
+          </button>
+        </div>
+
+        <div id="authSignIn" hidden>
+          <button type="button" class="ts-auth-back" id="authBackFromSignIn" data-i18n="auth.back">← Back</button>
+          <h2 data-i18n="auth.signInTitle">Sign in</h2>
+          <p class="ts-auth-modal__lead" data-i18n="auth.signInLead">Use the email or phone number you registered with.</p>
+          <div class="ts-field">
+            <label for="loginEmail" data-i18n="auth.emailLabel">Email or phone</label>
+            <input id="loginEmail" autocomplete="username" data-i18n-placeholder="auth.emailPh" placeholder="your@email.com or 2557…" />
+          </div>
+          <div class="ts-field">
+            <label for="loginPass" data-i18n="auth.passLabel">Password</label>
+            <input id="loginPass" type="password" autocomplete="current-password" data-i18n-placeholder="auth.passPh" placeholder="••••••••" />
+          </div>
+          <button type="button" class="btn btn--primary btn--block" id="btnLogin" data-i18n="auth.signIn">Sign in</button>
+          <p class="ts-details" style="margin-top: 0.75rem; font-size: 0.8rem">
+            <button type="button" id="authSwitchToSignUp" style="border: none; background: none; color: var(--tz-link); font: inherit; cursor: pointer; text-decoration: underline" data-i18n="auth.switchToSignUp">
+              New here? Create an account
+            </button>
+          </p>
+        </div>
+
+        <div id="authSignUp" hidden>
+          <button type="button" class="ts-auth-back" id="authBackFromSignUp" data-i18n="auth.back">← Back</button>
+          <h2 data-i18n="auth.signUpTitle">Create account</h2>
+          <p class="ts-auth-modal__lead" data-i18n="auth.signUpLead">Choose what you want to do on Garden.</p>
+          <div class="ts-role-pick" role="group" aria-label="Account type">
+            <button type="button" class="on" data-role="shopper">
+              <strong data-i18n="auth.roleShopperTitle">I want to buy</strong>
+              <span data-i18n="auth.roleShopperDesc">Shop groceries and get delivery</span>
+            </button>
+            <button type="button" data-role="vendor">
+              <strong data-i18n="auth.roleVendorTitle">I sell products</strong>
+              <span data-i18n="auth.roleVendorDesc">Run a shop (approval required)</span>
+            </button>
+            <button type="button" data-role="driver">
+              <strong data-i18n="auth.roleDriverTitle">I deliver orders</strong>
+              <span data-i18n="auth.roleDriverDesc">Earn by delivering to customers</span>
+            </button>
+          </div>
+          <div id="signupVendorFields" hidden>
+            <div class="ts-field">
+              <label for="signupBusiness" data-i18n="auth.businessName">Business name</label>
+              <input id="signupBusiness" placeholder="e.g. Kariakoo Fresh Foods" />
+            </div>
+            <div class="ts-field">
+              <label for="signupZone" data-i18n="auth.zone">Area / zone</label>
+              <input id="signupZone" placeholder="e.g. Kinondoni" />
+            </div>
+          </div>
+          <div class="ts-field">
+            <label for="signupName" data-i18n="auth.yourName">Your name</label>
+            <input id="signupName" autocomplete="name" data-i18n-placeholder="checkout.namePh" placeholder="e.g. Asha Kimaro" />
+          </div>
+          <div class="ts-field">
+            <label for="signupEmail" data-i18n="auth.emailLabel">Email or phone</label>
+            <input id="signupEmail" autocomplete="username" data-i18n-placeholder="auth.emailPh" placeholder="your@email.com or 2557…" />
+          </div>
+          <div class="ts-field">
+            <label for="signupPass" data-i18n="auth.passLabel">Password</label>
+            <input id="signupPass" type="password" autocomplete="new-password" data-i18n-placeholder="auth.passPh" placeholder="At least 6 characters" />
+          </div>
+          <button type="button" class="btn btn--primary btn--block" id="btnSignup" data-i18n="auth.createAccount">Create account</button>
+          <p class="ts-details" style="margin-top: 0.75rem; font-size: 0.8rem">
+            <button type="button" id="authSwitchToSignIn" style="border: none; background: none; color: var(--tz-link); font: inherit; cursor: pointer; text-decoration: underline" data-i18n="auth.switchToSignIn">
+              Already have an account? Sign in
+            </button>
+          </p>
+          <p class="ts-details" style="font-size: 0.75rem; margin: 0.5rem 0 0" data-i18n="auth.adminNote">
+            Operations admin access is by invitation only (not available in public sign-up).
+          </p>
+        </div>
+
+        <div id="authSignedIn" hidden>
+          <h2 data-i18n="auth.signedInTitle">Your account</h2>
+          <p id="authSignedInSummary" class="ts-auth-modal__lead"></p>
+          <div id="authDashboardLinks" style="display: grid; gap: 0.5rem; margin-bottom: 1rem"></div>
+          <details id="authProfileDetails" style="margin-bottom: 0.75rem">
+            <summary data-i18n="auth.editProfile">Edit profile</summary>
+            <div style="margin-top: 0.55rem">
+              <div class="ts-field">
+                <label for="profileName" data-i18n="auth.yourName">Your name</label>
+                <input id="profileName" />
+              </div>
+              <div class="ts-field">
+                <label for="profilePhone" data-i18n="checkout.phone">Phone</label>
+                <input id="profilePhone" />
+              </div>
+              <div class="ts-field">
+                <label for="profileEmail" data-i18n="auth.emailLabel">Email</label>
+                <input id="profileEmail" />
+              </div>
+              <details style="margin: 0.5rem 0">
+                <summary data-i18n="auth.changePassword">Change password</summary>
+                <div class="ts-field">
+                  <label for="profileCurrentPass" data-i18n="auth.currentPassword">Current password</label>
+                  <input id="profileCurrentPass" type="password" />
+                </div>
+                <div class="ts-field">
+                  <label for="profileNewPass" data-i18n="auth.newPassword">New password (8+ chars)</label>
+                  <input id="profileNewPass" type="password" />
+                </div>
+              </details>
+              <button type="button" class="btn btn--secondary btn--block" id="btnSaveProfile" data-i18n="auth.saveProfile">Save profile</button>
+            </div>
+          </details>
+          <button type="button" class="btn btn--secondary btn--block" id="btnLogout" data-i18n="auth.signOut">Sign out</button>
+        </div>
+      </div>
+    </div>
+
+    <main id="main">
+      <section class="ts-hero" aria-labelledby="hero-title">
+        <span class="ts-hero__eyebrow" data-i18n="hero.eyebrow">MVP demo</span>
+        <h1 id="hero-title" data-i18n="hero.title">Everything you need, delivered in Dar</h1>
+        <p id="heroDesc">
+          <span data-i18n="hero.descBefore">Browse real inventory from a demo store (</span><strong id="storeName">Jiko Fresh Market</strong><span data-i18n="hero.descAfter">): pay with M-Pesa, Airtel Money, Tigo Pesa, HaloPesa, or cash on delivery. This flow is wired to the same API your production backend would use.</span>
+        </p>
+        <div class="ts-trust" role="list">
+          <span role="listitem" data-i18n="hero.trustPrices">Prices in TZS</span>
+          <span role="listitem" data-i18n="hero.trustMobile">Mobile money ready</span>
+          <span role="listitem" data-i18n="hero.trustCod">COD available</span>
+        </div>
+      </section>
+
+      <div class="ts-shop-layout">
+        <div>
+          <h2 class="ts-section-title" data-i18n="menu.title">Menu</h2>
+          <div style="display:flex; gap:0.5rem; margin:0 0 0.9rem; flex-wrap:wrap">
+            <input id="qSearch" data-i18n-placeholder="menu.search" placeholder="Search products…" style="flex:1; min-width:12rem; padding:0.55rem 0.65rem; border-radius:10px; border:1px solid var(--tz-border); background:var(--tz-input-bg); color:var(--tz-text)" />
+            <select id="sortBy" style="padding:0.55rem 0.65rem; border-radius:10px; border:1px solid var(--tz-border); background:var(--tz-input-bg); color:var(--tz-text)">
+              <option value="popular">Most relevant</option>
+              <option value="price_asc">Price: low to high</option>
+              <option value="price_desc">Price: high to low</option>
+            </select>
+          </div>
+          <div class="ts-grid-products" id="productGrid" aria-live="polite">
+            <p class="ts-muted" id="productGridLoading" style="grid-column: 1 / -1; color: var(--tz-muted)" data-i18n="menu.loading">Loading products…</p>
+          </div>
+        </div>
+
+        <div class="ts-cart" id="checkout">
+          <h2 data-i18n="cart.title">Your order</h2>
+          <div class="ts-location-bar" id="locationBar" role="status" aria-live="polite">
+            <span class="ts-location-bar__signal" aria-hidden="true"></span>
+            <div>
+              <strong id="locationBarCity">Dar es Salaam</strong>
+              <p class="ts-muted" id="locationBarDetail" data-i18n="location.detecting">Detecting your area…</p>
+            </div>
+          </div>
+          <div id="cartBody">
+            <div class="ts-cart__empty" id="cartEmpty" data-i18n="cart.empty">Add items to build your bag.</div>
+            <div id="cartLines" hidden></div>
+            <div class="ts-cart__total" id="cartTotalRow" hidden>
+              <span data-i18n="cart.subtotal">Subtotal</span>
+              <span id="cartTotal">—</span>
+            </div>
+          </div>
+
+          <div id="checkoutAuthHint" class="ts-checkout-auth">
+            <p id="checkoutAuthText" data-i18n="auth.checkoutNeedSignIn">Sign in to place your order.</p>
+            <button type="button" class="btn btn--primary btn--block" id="btnCheckoutSignIn" data-i18n="auth.navSignIn">Sign in</button>
+          </div>
+          <div id="checkoutSignedIn" class="ts-checkout-auth ts-checkout-auth--ok" hidden>
+            <p id="checkoutSignedInText"></p>
+            <button type="button" class="btn btn--secondary btn--block" id="btnCheckoutAccount" data-i18n="auth.openAccount">My account</button>
+          </div>
+
+          <div class="ts-field" id="formFields">
+            <div class="ts-field">
+              <label for="citySelect" data-i18n="checkout.city">Your city</label>
+              <select id="citySelect" aria-describedby="city-hint"></select>
+              <p id="city-hint" class="ts-details" style="margin: 0.25rem 0 0; font-size: 0.78rem" data-i18n="checkout.cityHint">We deliver to this city. Area updates from your address or GPS.</p>
+            </div>
+            <div class="ts-field" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end">
+              <button type="button" class="btn btn--secondary" id="btnUseLocation" style="flex: 1; min-width: 10rem" data-i18n="checkout.useGps">Use my location</button>
+            </div>
+            <div class="ts-field">
+              <label for="cname" data-i18n="checkout.name">Your name</label>
+              <input id="cname" autocomplete="name" data-i18n-placeholder="checkout.namePh" placeholder="e.g. Asha Kimaro" value="Asha Kimaro" />
+            </div>
+            <div class="ts-field">
+              <label for="phone" data-i18n="checkout.phone">Phone (Tanzania)</label>
+              <input id="phone" inputmode="numeric" autocomplete="tel" value="0744000000" />
+            </div>
+            <div class="ts-field">
+              <label for="caddress" data-i18n="checkout.address">Delivery address</label>
+              <textarea id="caddress" rows="2" autocomplete="street-address" data-i18n-placeholder="checkout.addressPh" placeholder="e.g. Plot 12, Masaki, Kinondoni, Dar es Salaam">Plot 12, Masaki, Kinondoni, Dar es Salaam</textarea>
+              <p class="ts-details" style="margin: 0.25rem 0 0; font-size: 0.78rem" data-i18n="checkout.addressHint">Include area, street or landmark so the driver can find you.</p>
+            </div>
+            <div class="ts-field">
+              <label for="pay" data-i18n="checkout.pay">How you’ll pay</label>
+              <select id="pay" aria-describedby="pay-hint">
+                <option value="cod">Cash on delivery</option>
+                <option value="mpesa">M-Pesa</option>
+                <option value="airtel_money">Airtel Money</option>
+                <option value="tigo_pesa">Tigo Pesa</option>
+                <option value="halopesa">HaloPesa</option>
+              </select>
+            </div>
+            <p id="pay-hint" class="ts-details" style="margin: -0.25rem 0 0.5rem; font-size: 0.78rem" data-i18n="checkout.payHint">
+              Wallet options open a test payment after you place the order. Cash on delivery skips that step.
+            </p>
+            <button type="button" class="btn btn--primary btn--block" id="btnOrder" disabled data-i18n="checkout.placeOrder">Place order</button>
+          </div>
+
+          <div class="ts-panel" id="walletPanel" hidden>
+            <h3 data-i18n="wallet.title">Complete mobile payment</h3>
+            <p class="ts-muted" style="margin: 0 0 0.4rem; color: var(--tz-muted); font-size: 0.82rem" id="walletIntro" data-i18n="wallet.intro">
+              After you place a wallet order, start the payment here. The simulator below is for this demo only.
+            </p>
+            <p class="ts-callout" id="walletHint" data-i18n="wallet.hint">Place a wallet order first, then return to this box.</p>
+            <div class="ts-field" style="margin-top: 0.5rem">
+              <label for="orderId" data-i18n="wallet.orderRef">Order reference</label>
+              <input id="orderId" readonly class="ts-mono" style="background: var(--tz-elev-2)" />
+            </div>
+            <div class="ts-field">
+              <label for="msisdn" data-i18n="wallet.msisdn">M-Pesa / mobile number</label>
+              <input id="msisdn" inputmode="numeric" value="0744000000" />
+            </div>
+            <div class="ts-field">
+              <label for="idem" data-i18n="wallet.idem">Idempotency key (optional)</label>
+              <input id="idem" data-i18n-placeholder="wallet.idemPh" placeholder="client reference" class="ts-mono" style="font-size: 0.8rem" />
+            </div>
+            <button type="button" class="btn btn--secondary btn--block" id="btnInit" data-i18n="wallet.startPay">Start test payment</button>
+            <div class="ts-field" style="display: flex; gap: 0.5rem; margin-top: 0.6rem">
+              <button type="button" class="btn btn--blue" style="flex: 1" id="btnPaid" data-i18n="wallet.markPaid">Mark as paid (demo)</button>
+              <button type="button" class="btn btn--red" style="flex: 1" id="btnFail" data-i18n="wallet.markFail">Mark as failed (demo)</button>
+            </div>
+            <p class="ts-details" style="font-size: 0.75rem; margin: 0.5rem 0 0" data-i18n="wallet.demoNote">Demo only — replaces your PSP’s STK and webhooks in production.</p>
+          </div>
+
+          <details class="ts-details" id="techDetails">
+            <summary data-i18n="tech.summary">Developer reference</summary>
+            <p style="font-size: 0.75rem; margin: 0.4rem 0; color: var(--tz-muted)" data-i18n="tech.desc">
+              Raw API payloads (useful for QA). Customers never need to open this.
+            </p>
+            <pre id="out">{}</pre>
+          </details>
+        </div>
+      </div>
+    </main>
+
+    <div class="ts-cart-bar" id="cartBar" hidden>
+      <span id="cartBarText">0 items · 0 TZS</span>
+      <button type="button" class="btn btn--primary" id="cartBarBtn" data-i18n="cart.viewBasket">View basket</button>
+    </div>
+
+    <footer class="ts-footer" data-i18n="footer">
+      garden — demonstration storefront · Not a live telco or payments integration
+    </footer>
+
+    <script src="/assets/i18n.js"></script>
+    <script src="/assets/tzshop.js"></script>
+    <script src="/assets/location.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const VENDOR_ID = "v1";
+      const api = (path, opt = {}) => fetch(path, { headers: { "Content-Type": "application/json" }, ...opt });
+
+      let products = [];
+      const cart = new Map();
+      let lastPayment = null;
+      let currentUser = null;
+      let signupRole = "shopper";
+      const t = (key, params) => window.TZShop.t(key, params);
+      const fmt = (n) => window.TZShop.moneyTzs(n);
+
+      function openAuthModal(mode) {
+        $("authModal").hidden = false;
+        document.body.style.overflow = "hidden";
+        if (currentUser) {
+          showAuthView("signedIn");
+          return;
+        }
+        if (mode === "signin") showAuthView("signin");
+        else if (mode === "signup") showAuthView("signup");
+        else showAuthView("chooser");
+      }
+
+      function closeAuthModal() {
+        $("authModal").hidden = true;
+        document.body.style.overflow = "";
+      }
+
+      function showAuthView(view) {
+        $("authChooser").hidden = view !== "chooser";
+        $("authSignIn").hidden = view !== "signin";
+        $("authSignUp").hidden = view !== "signup";
+        $("authSignedIn").hidden = view !== "signedIn";
+      }
+
+      function updateSignupRoleUi() {
+        document.querySelectorAll(".ts-role-pick button").forEach((b) => {
+          b.classList.toggle("on", b.dataset.role === signupRole);
+        });
+        $("signupVendorFields").hidden = signupRole !== "vendor";
+      }
+
+      function dashboardLinksForUser(user) {
+        const links = [{ href: "/account", label: t("auth.openAccount"), primary: true }];
+        const caps = user.capabilities || {};
+        if (caps.vendor?.status === "active" && user.vendor_id) {
+          links.push({ href: "/vendor", label: t("auth.goVendor") });
+        }
+        if (caps.driver?.status === "verified" && user.driver_id) {
+          links.push({ href: "/driver", label: t("auth.goDriver") });
+        }
+        if (user.role === "admin" || caps.admin) {
+          links.push({ href: "/admin", label: t("auth.goAdmin") });
+        }
+        return links;
+      }
+
+      function renderSignedInAuthUi(user) {
+        $("btnAuthLabel").textContent = user.name?.split(" ")[0] || t("auth.navAccount");
+        $("btnAuthOpen").classList.add("ts-account-btn--signed-in");
+        $("authSignedInSummary").textContent = t("auth.signedIn", {
+          name: user.name,
+          role: window.TZShop.roleLabel(user.role),
+        });
+        const links = dashboardLinksForUser(user);
+        $("authDashboardLinks").innerHTML = links
+          .map(
+            (l, i) =>
+              `<a class="btn ${i === 0 ? "btn--primary" : "btn--secondary"} btn--block" href="${l.href}">${window.TZShop.esc(l.label)}</a>`
+          )
+          .join("");
+        if (user.capabilities?.vendor?.status === "pending" || (user.role === "vendor" && !user.vendor_id)) {
+          $("authDashboardLinks").innerHTML +=
+            `<p class="ts-details" style="margin:0.35rem 0 0;font-size:0.82rem">${window.TZShop.esc(t("auth.vendorPending"))}</p>`;
+        }
+        if (user.capabilities?.driver?.status === "pending") {
+          $("authDashboardLinks").innerHTML +=
+            `<p class="ts-details" style="margin:0.35rem 0 0;font-size:0.82rem">${window.TZShop.esc(t("account.driverPendingDesc"))}</p>`;
+        }
+        $("profileName").value = user.name || "";
+        $("profilePhone").value = user.phone || "";
+        $("profileEmail").value = user.email || "";
+        $("checkoutAuthHint").hidden = true;
+        $("checkoutSignedIn").hidden = false;
+        $("checkoutSignedInText").textContent = t("auth.checkoutSignedIn", { name: user.name });
+      }
+
+      function renderSignedOutAuthUi() {
+        $("btnAuthLabel").textContent = t("auth.navSignIn");
+        $("btnAuthOpen").classList.remove("ts-account-btn--signed-in");
+        $("checkoutAuthHint").hidden = false;
+        $("checkoutSignedIn").hidden = true;
+      }
+
+      function fillSortOptions() {
+        const cur = $("sortBy").value;
+        $("sortBy").innerHTML = [
+          ["popular", "menu.sortPopular"],
+          ["price_asc", "menu.sortAsc"],
+          ["price_desc", "menu.sortDesc"],
+        ]
+          .map(([v, k]) => `<option value="${v}">${t(k)}</option>`)
+          .join("");
+        $("sortBy").value = cur || "popular";
+      }
+
+      function fillPayOptions() {
+        const cur = $("pay").value;
+        $("pay").innerHTML = [
+          ["cod", "checkout.payCod"],
+          ["mpesa", "checkout.payMpesa"],
+          ["airtel_money", "checkout.payAirtel"],
+          ["tigo_pesa", "checkout.payTigo"],
+          ["halopesa", "checkout.payHalo"],
+        ]
+          .map(([v, k]) => `<option value="${v}">${t(k)}</option>`)
+          .join("");
+        $("pay").value = cur || "cod";
+      }
+
+      let locCoords = { lat: null, lng: null };
+      let locSource = "city";
+      let addrDebounce = null;
+
+      function fillCitySelect() {
+        const cur = $("citySelect").value;
+        $("citySelect").innerHTML = window.TZLocation.CITIES.map(
+          (c) => `<option value="${c.id}">${window.TZShop.esc(c.label)}</option>`
+        ).join("");
+        $("citySelect").value = cur || "dar";
+      }
+
+      function placeLabel(loc) {
+        return loc.area ? `${loc.city} · ${loc.area}` : loc.city;
+      }
+
+      function getCustomerLocation() {
+        return window.TZLocation.resolveLocation({
+          cityId: $("citySelect").value,
+          address: $("caddress").value,
+          lat: locCoords.lat,
+          lng: locCoords.lng,
+          source: locSource,
+        });
+      }
+
+      function updateLocationUI() {
+        const loc = getCustomerLocation();
+        const label = placeLabel(loc);
+        const shopping = cart.size > 0;
+        $("locationPillText").textContent = label;
+        $("locationBarCity").textContent = label;
+        $("locationPill").title = t("location.pillTitle", { place: label });
+        $("locationPill").classList.toggle("ts-location-pill--live", loc.live);
+        $("locationPill").classList.toggle("ts-location-pill--shopping", shopping);
+        $("locationBar").classList.toggle("ts-location-bar--live", loc.live);
+        $("locationBar").classList.toggle("ts-location-bar--shopping", shopping);
+        let detail;
+        if (shopping) detail = t("location.shoppingIn", { place: label });
+        else if (loc.live) detail = t("location.barGps", { place: label });
+        else if (loc.area && loc.source === "address") detail = t("location.barAddress", { place: label });
+        else if (loc.area) detail = t("location.barAddress", { place: label });
+        else detail = t("location.barCity", { city: loc.city });
+        $("locationBarDetail").textContent = detail;
+      }
+
+      function onLanguageChanged() {
+        fillSortOptions();
+        fillPayOptions();
+        fillCitySelect();
+        updateLocationUI();
+        renderCart();
+        renderProducts();
+        refreshMe().then(() => {
+          if (currentUser) renderSignedInAuthUi(currentUser);
+          else renderSignedOutAuthUi();
+        });
+        if (!$("walletPanel").hidden && !$("orderId").value.trim()) {
+          $("walletHint").textContent = t("wallet.hint");
+        }
+      }
+
+      function setOut(obj) {
+        $("out").textContent = JSON.stringify(obj, null, 2);
+      }
+
+      function initial(name) {
+        return String(name || "?")
+          .trim()
+          .slice(0, 2)
+          .toUpperCase();
+      }
+
+      function cartItemsArray() {
+        return [...cart.values()].map((x) => ({ product_id: x.product.id, qty: x.qty }));
+      }
+
+      function cartCount() {
+        return [...cart.values()].reduce((s, x) => s + x.qty, 0);
+      }
+
+      function cartSubtotal() {
+        return [...cart.values()].reduce((s, x) => s + x.qty * x.product.price_tzs, 0);
+      }
+
+      function renderCart() {
+        const sub = cartSubtotal();
+        const empty = cart.size === 0;
+        $("cartEmpty").hidden = !empty;
+        $("cartLines").hidden = empty;
+        $("cartTotalRow").hidden = empty;
+        $("btnOrder").disabled = empty;
+        if (empty) {
+          $("cartLines").innerHTML = "";
+        } else {
+          $("cartLines").innerHTML = [...cart.values()]
+            .map((line) => {
+              const p = line.product;
+              return `<div class="ts-line" data-pid="${p.id}">
+              <div>
+                <div style="font-weight:600">${window.TZShop.esc(p.name)}</div>
+                <div class="ts-muted" style="font-size:0.8rem;color:var(--tz-muted)">${fmt(p.price_tzs)} ${t("cart.each")}</div>
+              </div>
+              <div class="ts-line__qty">
+                <button type="button" data-act="-" aria-label="${t("cart.decrease")}">−</button>
+                <span style="min-width:1.5rem;text-align:center">${line.qty}</span>
+                <button type="button" data-act="+" aria-label="${t("cart.increase")}">+</button>
+              </div>
+            </div>`;
+            })
+            .join("");
+          $("cartTotal").textContent = fmt(sub);
+        }
+        const bar = $("cartBar");
+        if (window.innerWidth < 900) {
+          bar.hidden = empty;
+          $("cartBarText").textContent = t("cart.itemsBar", { count: cartCount(), total: fmt(sub) });
+        } else {
+          bar.hidden = true;
+        }
+        updateLocationUI();
+      }
+
+      function addToCart(p) {
+        const cur = cart.get(p.id) || { product: p, qty: 0 };
+        if (cur.qty + 1 > p.stock_qty) {
+          window.TZShop.showToast(t("toast.noStock"), "err");
+          return;
+        }
+        cur.qty += 1;
+        cart.set(p.id, cur);
+        renderCart();
+      }
+
+      document.getElementById("cartLines").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-act]");
+        if (!b) return;
+        const row = b.closest(".ts-line");
+        const id = row?.dataset?.pid;
+        if (!id || !cart.has(id)) return;
+        const line = cart.get(id);
+        if (b.dataset.act === "-") {
+          line.qty -= 1;
+          if (line.qty <= 0) cart.delete(id);
+        } else {
+          if (line.qty + 1 > line.product.stock_qty) {
+            window.TZShop.showToast(t("toast.maxStock"), "err");
+            return;
+          }
+          line.qty += 1;
+        }
+        renderCart();
+      });
+
+      function renderProducts() {
+        const q = $("qSearch").value.trim().toLowerCase();
+        const sortBy = $("sortBy").value;
+        let filtered = products.filter((p) => {
+          if (!q) return true;
+          return [p.name, p.description].join(" ").toLowerCase().includes(q);
+        });
+        if (sortBy === "price_asc") filtered = filtered.slice().sort((a, b) => a.price_tzs - b.price_tzs);
+        if (sortBy === "price_desc") filtered = filtered.slice().sort((a, b) => b.price_tzs - a.price_tzs);
+        if (!filtered.length) {
+          $("productGrid").innerHTML = `<p class="ts-muted" style="grid-column:1/-1;color:var(--tz-muted)">${window.TZShop.esc(t("menu.noProducts"))}</p>`;
+          return;
+        }
+        $("productGrid").innerHTML = filtered
+          .map((p) => {
+            const low = p.stock_qty <= 5;
+            const addToCartLabel = t("product.addToBag");
+            const badge = low ? t("product.onlyLeft", { n: p.stock_qty }) : t("product.inStock");
+            return `<article class="ts-product" data-pid="${p.id}">
+            <div class="ts-product__art" aria-hidden="true">${initial(p.name)}</div>
+            <div class="ts-product__body">
+              <h3 class="ts-product__name">${window.TZShop.esc(p.name)}</h3>
+              <p class="ts-product__desc">${window.TZShop.esc(p.description || "")}</p>
+              <div class="ts-product__row">
+                <span class="ts-product__price">${fmt(p.price_tzs)}</span>
+                <span class="ts-badge ${low ? "" : "ts-badge--ok"}">${window.TZShop.esc(badge)}</span>
+              </div>
+              <button type="button" class="btn btn--primary btn--block" data-add="${p.id}">${addToCartLabel}</button>
+            </div>
+          </article>`;
+          })
+          .join("");
+      }
+
+      document.getElementById("productGrid").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-add]");
+        if (!b) return;
+        const p = products.find((x) => x.id === b.dataset.add);
+        if (p) addToCart(p);
+      });
+
+      async function loadProducts() {
+        const r = await api(`/api/products?vendor_id=${encodeURIComponent(VENDOR_ID)}`);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Could not load products");
+        products = j.products || [];
+        renderProducts();
+      }
+
+      function updatePartnerNav(user) {
+        const vend = $("navVendor");
+        const drv = $("navDriver");
+        const adm = $("navAdmin");
+        if (!user) {
+          vend.href = "/account#vendor";
+          drv.href = "/account#driver";
+          adm.hidden = true;
+          return;
+        }
+        if (window.TZShop.canAccessVendor(user)) {
+          vend.href = "/vendor";
+          vend.title = t("nav.vendorDashTitle");
+        } else {
+          vend.href = "/account#vendor";
+          vend.title = t("nav.applyVendorTitle");
+        }
+        if (window.TZShop.canAccessDriver(user)) {
+          drv.href = "/driver";
+          drv.title = t("nav.driverDashTitle");
+        } else {
+          drv.href = "/account#driver";
+          drv.title = t("nav.applyDriverTitle");
+        }
+        adm.hidden = !window.TZShop.canAccessAdmin(user);
+      }
+
+      async function refreshMe() {
+        const r = await api("/api/auth/me");
+        if (!r.ok) {
+          currentUser = null;
+          updatePartnerNav(null);
+          renderSignedOutAuthUi();
+          return;
+        }
+        const j = await r.json();
+        currentUser = j.user;
+        updatePartnerNav(j.user);
+        renderSignedInAuthUi(j.user);
+      }
+
+      $("btnOrder").addEventListener("click", async () => {
+        if (!currentUser) {
+          window.TZShop.showToast(t("toast.signInFirst"), "err");
+          openAuthModal("signin");
+          return;
+        }
+        const dropoff_label = $("caddress").value.trim();
+        if (dropoff_label.length < 5) {
+          window.TZShop.showToast(t("toast.addressRequired"), "err");
+          $("caddress").focus();
+          return;
+        }
+        const loc = getCustomerLocation();
+        const body = {
+          vendor_id: VENDOR_ID,
+          customer_name: $("cname").value.trim() || "Customer",
+          customer_phone: $("phone").value,
+          dropoff_label,
+          customer_city: loc.city,
+          delivery_area: loc.area || undefined,
+          payment_method: $("pay").value,
+          items: cartItemsArray(),
+        };
+        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+          body.dropoff_lat = loc.lat;
+          body.dropoff_lng = loc.lng;
+        }
+        if (!body.items.length) {
+          window.TZShop.showToast(t("toast.bagEmpty"), "err");
+          return;
+        }
+        const r = await api("/api/orders", { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json();
+        setOut(j);
+        if (!r.ok) {
+          window.TZShop.showToast(j.error || t("toast.orderFailed"), "err");
+          return;
+        }
+        const order = j.order;
+        try {
+          localStorage.setItem("tz_last_address", dropoff_label);
+          localStorage.setItem("tz_last_city", $("citySelect").value);
+        } catch (_) {}
+        $("orderId").value = order.id;
+        lastPayment = null;
+        if (order.payment_method === "cod") {
+          window.TZShop.showToast(t("toast.orderCod", { amount: fmt(order.total_tzs) }), "ok");
+          $("walletPanel").hidden = true;
+        } else {
+          window.TZShop.showToast(t("toast.orderWallet"), "ok");
+          $("walletPanel").hidden = false;
+          $("walletPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        cart.clear();
+        renderCart();
+      });
+
+      async function sign(payment_id, amount_tzs, status) {
+        const r = await api("/api/dev/sign-webhook", {
+          method: "POST",
+          body: JSON.stringify({ payment_id, amount_tzs, status }),
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          throw new Error(t);
+        }
+        return r.json();
+      }
+
+      async function sendWebhook(provider, payload) {
+        const r = await api(`/api/webhooks/${encodeURIComponent(provider)}`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        const j = await r.json().catch(async () => ({ error: await r.text() }));
+        setOut({ http: r.status, ...j });
+        if (!r.ok) window.TZShop.showToast(String(j.error || "Webhook failed"), "err");
+        else window.TZShop.showToast(t("toast.webhookOk"), "ok");
+      }
+
+      $("btnInit").addEventListener("click", async () => {
+        const order_id = $("orderId").value.trim();
+        const provider = $("pay").value;
+        const msisdn = $("msisdn").value.trim();
+        const idempotency_key = $("idem").value.trim() || undefined;
+        if (!order_id) {
+          window.TZShop.showToast("Place a wallet order first.", "err");
+          return;
+        }
+        if (!["mpesa", "airtel_money", "tigo_pesa", "halopesa"].includes(provider)) {
+          window.TZShop.showToast(t("toast.selectWallet"), "err");
+          return;
+        }
+        const r = await api("/api/payments/initiate", {
+          method: "POST",
+          body: JSON.stringify({ order_id, provider, msisdn, idempotency_key }),
+        });
+        const j = await r.json();
+        setOut(j);
+        lastPayment = j.payment || null;
+        const hint =
+          (j.instructions && (j.instructions.message || j.instructions.hint)) ||
+          (j.instructions && j.instructions.next_step) ||
+          t("wallet.hintStarted");
+        $("walletHint").textContent = typeof hint === "string" ? hint : String(hint);
+        if (r.ok) window.TZShop.showToast(t("toast.paymentStarted"), "ok");
+        else window.TZShop.showToast(j.error || t("toast.paymentFail"), "err");
+      });
+
+      $("btnPaid").addEventListener("click", async () => {
+        try {
+          const pay = lastPayment || JSON.parse($("out").textContent || "{}").payment;
+          if (!pay?.id) throw new Error(t("toast.startPaymentFirst"));
+          const { signature } = await sign(pay.id, pay.amount_tzs, "paid");
+          const event_id = `evt_${crypto.randomUUID()}`;
+          await sendWebhook(pay.provider, {
+            event_id,
+            payment_id: pay.id,
+            status: "paid",
+            amount_tzs: pay.amount_tzs,
+            signature,
+          });
+        } catch (e) {
+          setOut({ error: String(e.message || e) });
+          window.TZShop.showToast(String(e.message || e), "err");
+        }
+      });
+
+      $("btnFail").addEventListener("click", async () => {
+        try {
+          const pay = lastPayment || JSON.parse($("out").textContent || "{}").payment;
+          if (!pay?.id) throw new Error(t("toast.startPaymentFirst"));
+          const { signature } = await sign(pay.id, pay.amount_tzs, "failed");
+          const event_id = `evt_${crypto.randomUUID()}`;
+          await sendWebhook(pay.provider, {
+            event_id,
+            payment_id: pay.id,
+            status: "failed",
+            amount_tzs: pay.amount_tzs,
+            signature,
+          });
+        } catch (e) {
+          setOut({ error: String(e.message || e) });
+          window.TZShop.showToast(String(e.message || e), "err");
+        }
+      });
+
+      $("cartBarBtn").addEventListener("click", () => {
+        document.getElementById("checkout").scrollIntoView({ behavior: "smooth" });
+        $("cname").focus();
+      });
+
+      let resizeT;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeT);
+        resizeT = setTimeout(() => renderCart(), 150);
+      });
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => r.unregister());
+        }).catch(() => {});
+      }
+
+      $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value));
+      window.TZShop.onLangChange(() => {
+        $("langSelect").value = window.TZShop.getLang();
+        onLanguageChanged();
+      });
+      $("qSearch").addEventListener("input", renderProducts);
+      $("sortBy").addEventListener("change", renderProducts);
+
+      $("btnAuthOpen").addEventListener("click", () => openAuthModal(currentUser ? "signedIn" : "chooser"));
+      $("btnCheckoutSignIn").addEventListener("click", () => openAuthModal("signin"));
+      $("btnCheckoutAccount").addEventListener("click", () => {
+        if (currentUser) location.href = "/account";
+        else openAuthModal("signin");
+      });
+      document.querySelectorAll("[data-close-auth]").forEach((el) => {
+        el.addEventListener("click", closeAuthModal);
+      });
+      $("authChooseSignIn").addEventListener("click", () => showAuthView("signin"));
+      $("authChooseSignUp").addEventListener("click", () => showAuthView("signup"));
+      $("authBackFromSignIn").addEventListener("click", () => showAuthView("chooser"));
+      $("authBackFromSignUp").addEventListener("click", () => showAuthView("chooser"));
+      $("authSwitchToSignUp").addEventListener("click", () => showAuthView("signup"));
+      $("authSwitchToSignIn").addEventListener("click", () => showAuthView("signin"));
+      document.querySelectorAll(".ts-role-pick button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          signupRole = btn.dataset.role || "shopper";
+          updateSignupRoleUi();
+        });
+      });
+      updateSignupRoleUi();
+
+      $("btnLogin").addEventListener("click", async () => {
+        const ident = $("loginEmail").value.trim();
+        const password = $("loginPass").value;
+        if (!ident || !password) {
+          window.TZShop.showToast(t("toast.loginRequired"), "err");
+          return;
+        }
+        const body = { password };
+        if (ident.includes("@")) body.email = ident;
+        else body.phone = ident;
+        const r = await api("/api/auth/login", { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          window.TZShop.showToast(j.error || t("toast.loginFail"), "err");
+          return;
+        }
+        $("loginPass").value = "";
+        await refreshMe();
+        closeAuthModal();
+        window.TZShop.showToast(t("toast.loginOk"), "ok");
+        const next = new URLSearchParams(location.search).get("next");
+        if (next && next.startsWith("/")) {
+          location.href = next;
+        }
+      });
+
+      $("btnSignup").addEventListener("click", async () => {
+        const ident = $("signupEmail").value.trim();
+        const password = $("signupPass").value;
+        if (!ident || !password) {
+          window.TZShop.showToast(t("toast.loginRequired"), "err");
+          return;
+        }
+        const body = {
+          name: $("signupName").value.trim() || undefined,
+          password,
+          role: signupRole,
+        };
+        if (ident.includes("@")) body.email = ident;
+        else body.phone = ident;
+        if (signupRole === "vendor") {
+          body.business_name = $("signupBusiness").value.trim();
+          body.zone = $("signupZone").value.trim();
+        }
+        const r = await api("/api/auth/signup", { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          window.TZShop.showToast(j.error || t("toast.signupFail"), "err");
+          return;
+        }
+        $("signupPass").value = "";
+        await refreshMe();
+        closeAuthModal();
+        if (j.next_step === "vendor_pending_approval") {
+          window.TZShop.showToast(t("toast.signupVendorPending"), "ok");
+        } else if (j.next_step === "complete_driver_verification") {
+          window.TZShop.showToast(t("toast.signupDriverVerify"), "ok");
+          window.location.href = "/account#driver";
+        } else if (j.next_step === "open_admin") {
+          window.TZShop.showToast(t("toast.signupOk"), "ok");
+          window.location.href = "/admin";
+        } else {
+          window.TZShop.showToast(t("toast.signupOk"), "ok");
+        }
+      });
+
+      $("btnLogout").addEventListener("click", async () => {
+        await api("/api/auth/logout", { method: "POST", body: "{}" });
+        currentUser = null;
+        await refreshMe();
+        closeAuthModal();
+        showAuthView("chooser");
+        window.TZShop.showToast(t("toast.logoutOk"), "ok");
+      });
+
+      $("btnSaveProfile").addEventListener("click", async () => {
+        if (!currentUser) return;
+        const body = {
+          name: $("profileName").value.trim(),
+          phone: $("profilePhone").value.trim(),
+          email: $("profileEmail").value.trim(),
+        };
+        const currentPassword = $("profileCurrentPass").value;
+        const newPassword = $("profileNewPass").value;
+        if (newPassword) {
+          body.current_password = currentPassword;
+          body.new_password = newPassword;
+        }
+        const r = await api("/api/auth/me", { method: "PATCH", body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          window.TZShop.showToast(j.error || t("toast.profileFail"), "err");
+          return;
+        }
+        $("profileCurrentPass").value = "";
+        $("profileNewPass").value = "";
+        await refreshMe();
+        window.TZShop.showToast(t("toast.profileOk"), "ok");
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !$("authModal").hidden) closeAuthModal();
+      });
+
+      $("citySelect").addEventListener("change", () => {
+        locSource = "city";
+        locCoords = { lat: null, lng: null };
+        updateLocationUI();
+      });
+
+      $("caddress").addEventListener("input", () => {
+        if (locSource === "gps") {
+          locSource = "address";
+          locCoords = { lat: null, lng: null };
+        }
+        locSource = $("caddress").value.trim().length >= 3 ? "address" : "city";
+        clearTimeout(addrDebounce);
+        addrDebounce = setTimeout(updateLocationUI, 280);
+      });
+
+      $("btnUseLocation").addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          window.TZShop.showToast(t("toast.locationUnavailable"), "err");
+          return;
+        }
+        $("btnUseLocation").disabled = true;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            locCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            locSource = "gps";
+            const loc = getCustomerLocation();
+            $("citySelect").value = loc.cityId;
+            updateLocationUI();
+            window.TZShop.showToast(t("toast.locationOk", { place: placeLabel(loc) }), "ok");
+            $("btnUseLocation").disabled = false;
+          },
+          () => {
+            window.TZShop.showToast(t("toast.locationDenied"), "err");
+            $("btnUseLocation").disabled = false;
+          },
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+        );
+      });
+
+      window.TZShop.initLang();
+      $("langSelect").value = window.TZShop.getLang();
+      fillCitySelect();
+      try {
+        const savedAddr = localStorage.getItem("tz_last_address");
+        if (savedAddr) $("caddress").value = savedAddr;
+        const savedCity = localStorage.getItem("tz_last_city");
+        if (savedCity) $("citySelect").value = savedCity;
+      } catch (_) {}
+      if ($("caddress").value.trim().length >= 3) locSource = "address";
+      updateLocationUI();
+      fillSortOptions();
+      fillPayOptions();
+
+      const authQ = new URLSearchParams(location.search);
+      if (authQ.get("auth") === "signin") {
+        openAuthModal("signin");
+      }
+
+      loadProducts()
+        .then(async () => {
+          renderCart();
+          await refreshMe();
+        })
+        .catch((e) => {
+          $("productGrid").innerHTML = `<p style="color:#b91c1c;grid-column:1/-1">${String(e)}</p>`;
+          window.TZShop.showToast(t("toast.catalogFail"), "err");
+        });
+    </script>
+  </body>
+</html>

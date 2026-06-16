@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>garden — Vendor dashboard</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/tzshop.css" />
+    <style>
+      :root {
+        font-family: var(--tz-font, "Plus Jakarta Sans", system-ui, sans-serif);
+        color: #0f172a;
+        background: #f1f5f9;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        max-width: 1100px;
+        margin-inline: auto;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 1.2rem;
+        margin: 0;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .tabs button {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tabs button.on {
+        background: #0f766e;
+        color: #fff;
+        border-color: #0f766e;
+      }
+      section.panel {
+        display: none;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      section.panel.active {
+        display: block;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .stat {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+      }
+      .stat b {
+        display: block;
+        font-size: 1.35rem;
+      }
+      .stat span {
+        font-size: 0.8rem;
+        color: #64748b;
+      }
+      .chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        height: 140px;
+        padding: 12px 0;
+        border-top: 1px solid #e2e8f0;
+        margin-top: 8px;
+      }
+      .bar-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+        justify-content: flex-end;
+      }
+      .bar {
+        width: 100%;
+        max-width: 48px;
+        background: linear-gradient(#14b8a6, #0d9488);
+        border-radius: 6px 6px 0 0;
+        min-height: 2px;
+      }
+      .bar-wrap small {
+        margin-top: 6px;
+        font-size: 0.7rem;
+        color: #64748b;
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 10px;
+        margin-bottom: 16px;
+      }
+      .toggle-row.closed {
+        background: #fef2f2;
+        border-color: #fecaca;
+      }
+      label.switch {
+        position: relative;
+        width: 52px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #cbd5e1;
+        border-radius: 999px;
+        transition: 0.2s;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: 0.2s;
+      }
+      .switch input:checked + .slider {
+        background: #0f766e;
+      }
+      .switch input:checked + .slider:before {
+        transform: translateX(24px);
+      }
+      .order {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #fafafa;
+      }
+      .order h3 {
+        margin: 0 0 6px;
+        font-size: 0.95rem;
+      }
+      .order .meta {
+        font-size: 0.85rem;
+        color: #475569;
+        margin-bottom: 8px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        background: #e0f2fe;
+        color: #0369a1;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      button.action {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        font: inherit;
+        cursor: pointer;
+        background: #0f766e;
+        color: #fff;
+      }
+      button.action.secondary {
+        background: #2563eb;
+      }
+      button.action.danger {
+        background: #b91c1c;
+      }
+      button.action.ghost {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      tr.low td {
+        background: #fff7ed;
+      }
+      .form-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 12px;
+      }
+      @media (max-width: 640px) {
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        font: inherit;
+      }
+      #pCat,
+      #pCat option {
+        color: #0f172a !important;
+        background: #ffffff !important;
+      }
+      .cat-pick-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .cat-pick-btn {
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #0f172a;
+        font: inherit;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+      .cat-pick-btn.on {
+        background: #0d9488;
+        border-color: #0d9488;
+        color: #fff;
+      }
+      .vendor-notif-stack {
+        margin: 0;
+        padding: 0 16px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #f0fdf4;
+        border-bottom: 1px solid #bbf7d0;
+      }
+      .vendor-notif-stack:empty {
+        display: none;
+      }
+      .vendor-notif {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid #86efac;
+        font-size: 0.88rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+      .vendor-notif strong {
+        color: #047857;
+      }
+      .vendor-notif time {
+        display: block;
+        font-size: 0.72rem;
+        color: #64748b;
+        margin-top: 4px;
+      }
+      .order--paid-wallet {
+        border-color: #86efac;
+        background: #f0fdf4;
+      }
+      .badge--pay {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .muted {
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+      .earn-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+        margin: 12px 0;
+      }
+      .earn-box {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
+      pre.small {
+        font-size: 0.75rem;
+        background: #0b1220;
+        color: #e2e8f0;
+        padding: 10px;
+        border-radius: 8px;
+        overflow: auto;
+        max-height: 160px;
+      }
+    </style>
+  </head>
+  <body class="ts-skin-light ts-page-partner">
+    <header class="ts-topnav" role="navigation">
+      <a class="ts-brand" href="/">
+        <span class="ts-brand-mark" aria-hidden="true">G</span>
+        <span data-i18n="nav.brand">arden</span>
+      </a>
+      <nav class="ts-nav">
+        <a href="/account" data-i18n="auth.navAccount">Account</a>
+        <a href="/shop" data-i18n="account.navShop">Shop</a>
+        <select id="langSelect" class="ts-lang-select" aria-label="Language">
+          <option value="sw">Kiswahili</option>
+          <option value="en">English</option>
+        </select>
+        <span class="ts-badge-live" id="liveBadge" data-i18n="vendor.live">Live</span>
+      </nav>
+    </header>
+
+    <div class="ts-partner-wrap">
+      <div class="ts-partner-head">
+        <h1 id="shopTitle" data-i18n="vendor.title">Vendor dashboard</h1>
+        <p id="vendorSubLine"></p>
+      </div>
+
+    <div id="vendorNotifStack" class="vendor-notif-stack" aria-live="polite" aria-atomic="false"></div>
+
+    <div class="ts-partner-tabs tabs" id="tabs">
+      <button type="button" data-tab="overview" class="on" data-i18n="vendor.tabOverview">Overview</button>
+      <button type="button" data-tab="profile">Profile</button>
+      <button type="button" data-tab="orders" data-i18n="vendor.tabOrders">Orders</button>
+      <button type="button" data-tab="catalogue" data-i18n="vendor.tabCatalogue">Catalogue</button>
+      <button type="button" data-tab="earnings" data-i18n="vendor.tabEarnings">Earnings</button>
+    </div>
+
+    <section class="ts-partner-panel panel active" id="panel-overview">
+      <div class="toggle-row" id="shopToggleRow">
+        <label class="switch" title="Open or close shop">
+          <input type="checkbox" id="shopOpen" />
+          <span class="slider"></span>
+        </label>
+        <div>
+          <strong id="toggleLabel" data-i18n="vendor.shopOpen">Shop is open</strong>
+          <div class="muted" id="shopOpenHint" style="font-size: 0.85rem" data-i18n="vendor.shopOpenHint">When closed, customers cannot place new orders.</div>
+        </div>
+      </div>
+      <div class="stat-grid" id="stats"></div>
+      <h2 style="font-size: 1rem; margin: 0 0 8px">Weekly gross sales</h2>
+      <p class="muted" style="margin-top: 0">Totals from completed sales (delivered) per UTC day.</p>
+      <div class="chart" id="weekChart"></div>
+      <h2 style="font-size: 1rem; margin: 16px 0 8px">Low stock</h2>
+      <ul id="lowStock" class="muted"></ul>
+    </section>
+
+    <section class="ts-partner-panel panel" id="panel-profile">
+      <h2 style="font-size: 1rem; margin-top: 0">Vendor profile</h2>
+      <div class="form-grid">
+        <div>
+          <label>Shop name</label>
+          <input id="vpName" />
+        </div>
+        <div>
+          <label>Zone</label>
+          <input id="vpZone" />
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label>Pickup label</label>
+          <input id="vpPickup" />
+        </div>
+        <div>
+          <label>Shop phone</label>
+          <input id="vpPhone" />
+        </div>
+        <div>
+          <label>Shop open</label>
+          <select id="vpOpen">
+            <option value="1">Open</option>
+            <option value="0">Closed</option>
+          </select>
+        </div>
+      </div>
+      <button class="action" type="button" id="btnSaveVendorProfile">Save vendor profile</button>
+
+      <h2 style="font-size: 1rem; margin-top: 18px">Account profile</h2>
+      <div class="form-grid">
+        <div>
+          <label>Name</label>
+          <input id="apName" />
+        </div>
+        <div>
+          <label>Phone</label>
+          <input id="apPhone" />
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label>Email</label>
+          <input id="apEmail" />
+        </div>
+        <div>
+          <label>Locale</label>
+          <input id="apLocale" placeholder="en" />
+        </div>
+      </div>
+      <details style="margin-top: 8px">
+        <summary>Change password</summary>
+        <div class="form-grid">
+          <div>
+            <label>Current password</label>
+            <input id="apCurrentPass" type="password" />
+          </div>
+          <div>
+            <label>New password (8+ chars)</label>
+            <input id="apNewPass" type="password" />
+          </div>
+        </div>
+      </details>
+      <button class="action secondary" type="button" id="btnSaveAccountProfile" style="margin-top: 8px">Save account profile</button>
+    </section>
+
+    <section class="ts-partner-panel panel" id="panel-orders">
+      <p class="muted" data-i18n="vendor.ordersSound">
+        New orders play a short sound (if your browser allows). Enable sound by interacting with this page once.
+      </p>
+      <p class="muted" style="margin-top: 0.35rem" data-i18n="vendor.notifEnableHint">
+        Tap anywhere once to allow sounds. Allow browser notifications for alerts when this tab is in the background.
+      </p>
+      <div style="display: grid; gap: 16px; grid-template-columns: 1fr 1fr">
+        <div>
+          <h2 style="font-size: 1rem; margin-top: 0">Active pipeline</h2>
+          <div id="ordersActive"></div>
+        </div>
+        <div>
+          <h2 style="font-size: 1rem; margin-top: 0">History</h2>
+          <div id="ordersHistory"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ts-partner-panel panel" id="panel-catalogue">
+      <h2 style="font-size: 1rem; margin-top: 0" data-i18n="vendor.addProduct">Add product</h2>
+      <div class="form-grid">
+        <div>
+          <label data-i18n="vendor.name">Name</label>
+          <input id="pName" data-i18n-placeholder="vendor.namePh" placeholder="e.g. Maize flour 2kg" />
+        </div>
+        <div>
+          <label data-i18n="vendor.price">Price (TZS)</label>
+          <input id="pPrice" type="number" placeholder="12000" />
+        </div>
+        <div>
+          <label data-i18n="vendor.stock">Stock qty</label>
+          <input id="pStock" type="number" placeholder="20" />
+        </div>
+        <div>
+          <label data-i18n="vendor.category">Category</label>
+          <select id="pCat" aria-hidden="true" tabindex="-1" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none">
+            <option value="">Select category…</option>
+          </select>
+          <div id="catPick" class="cat-pick-row" role="group" aria-label="Category"></div>
+          <div id="catStatus" class="muted" style="font-size: 0.78rem; margin-top: 4px"></div>
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label data-i18n="vendor.description">Description</label>
+          <textarea id="pDesc" rows="2"></textarea>
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label>Photo (optional)</label>
+          <input type="file" id="pPhoto" accept="image/*" />
+        </div>
+      </div>
+      <button class="action" type="button" id="btnAddProduct" data-i18n="vendor.saveProduct">Save product</button>
+
+      <h2 style="font-size: 1rem; margin: 24px 0 8px">Categories</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end">
+        <div style="flex: 1; min-width: 160px">
+          <label>New category name</label>
+          <input id="newCatName" placeholder="Beverages" />
+        </div>
+        <button class="action ghost" type="button" id="btnAddCat">Add category</button>
+      </div>
+
+      <details style="margin: 1rem 0 0">
+        <summary style="cursor: pointer; font-weight: 600; font-size: 0.95rem">Bulk price edit (advanced)</summary>
+        <p class="muted" style="margin: 0.5rem 0 0.35rem">
+          Paste a JSON array of <code>product_id</code> and <code>price_tzs</code> keys.
+        </p>
+        <textarea id="bulkJson" rows="4" style="font-family: ui-monospace, monospace; margin-top: 0.35rem"></textarea>
+        <button class="action secondary" type="button" id="btnBulk" style="margin-top: 0.5rem">Apply bulk prices</button>
+      </details>
+
+      <h2 style="font-size: 1rem; margin: 24px 0 8px">Products</h2>
+      <div style="overflow-x: auto">
+        <table>
+          <thead>
+            <tr>
+              <th>On</th>
+              <th>Name</th>
+              <th>Price</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
+          <tbody id="prodRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="ts-partner-panel panel" id="panel-earnings">
+      <div class="earn-grid" id="earnBoxes"></div>
+      <h2 style="font-size: 1rem">Request payout</h2>
+      <div class="form-grid">
+        <div>
+          <label>Amount (TZS)</label>
+          <input id="poAmt" type="number" />
+        </div>
+        <div>
+          <label>Method</label>
+          <select id="poMethod">
+            <option value="mpesa">M-Pesa</option>
+            <option value="bank">Bank</option>
+            <option value="mobile_money">Mobile money</option>
+          </select>
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label>Destination (till / account no.)</label>
+          <input id="poDest" placeholder="2547… or bank ref" />
+        </div>
+      </div>
+      <button class="action" type="button" id="btnPayout">Submit payout request</button>
+      <div id="poOut" role="status" aria-live="polite" style="margin-top: 12px"></div>
+
+      <h2 style="font-size: 1rem; margin-top: 20px">Monthly statement (CSV)</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end">
+        <div>
+          <label>Month (YYYY-MM)</label>
+          <input id="stmtMonth" type="month" />
+        </div>
+        <button class="action secondary" type="button" id="btnDownloadStmt">Download</button>
+      </div>
+    </section>
+    </div>
+
+    <script src="/assets/i18n.js"></script>
+    <script src="/assets/tzshop.js"></script>
+    <script>
+      const t = (k, p) => window.TZShop.t(k, p);
+
+      function applyVendorI18n() {
+        window.TZShop.applyDataI18n();
+        const shop = `<a href="/shop">${t("vendor.customerDemo")}</a>`;
+        const driver = `<a href="/driver">${t("vendor.driverApp")}</a>`;
+        const admin = `<a href="/admin">Admin</a>`;
+        $("vendorSubLine").innerHTML = t("vendor.subtitle", { shop, driver, admin });
+        const open = $("shopOpen")?.checked;
+        if ($("toggleLabel")) {
+          $("toggleLabel").textContent = open ? t("vendor.shopOpenLong") : t("vendor.shopClosedLong");
+        }
+      }
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(async (regs) => {
+          if (!regs.length) return;
+          await Promise.all(regs.map((r) => r.unregister().catch(() => {})));
+          if (!sessionStorage.getItem("tz_vendor_sw_reset")) {
+            sessionStorage.setItem("tz_vendor_sw_reset", "1");
+            location.reload();
+          }
+        });
+      }
+
+      let VENDOR_ID = "v1";
+      let currentActor = null;
+
+      const $ = (id) => document.getElementById(id);
+      const api = (path, opt = {}) => window.TZShop.apiFetch(path, opt);
+      function categoryPlaceholder() {
+        return window.TZShop?.t?.("vendor.catSelect") || "Select category…";
+      }
+
+      function forceCategoryOptions() {
+        const sel = $("pCat");
+        const wanted = [
+          { value: "c1", label: "Groceries" },
+          { value: "c2", label: "Household" },
+          { value: "c3", label: "Beverages" },
+        ];
+        const cats = wanted.map((x) => ({ id: x.value, name: x.label }));
+        sel.innerHTML =
+          `<option value="">${categoryPlaceholder()}</option>` +
+          cats.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+        renderCategoryPick(cats);
+        sel.disabled = false;
+        $("btnAddProduct").disabled = !sel.value;
+        $("catStatus").textContent = "Category options ready.";
+      }
+      function seedCategorySelectFallback() {
+        const sel = $("pCat");
+        const saveBtn = $("btnAddProduct");
+        const cats = [
+          { id: "c1", name: "Groceries" },
+          { id: "c2", name: "Household" },
+        ];
+        sel.innerHTML =
+          `<option value="">${categoryPlaceholder()}</option>` +
+          cats.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+        renderCategoryPick(cats);
+        sel.disabled = false;
+        saveBtn.disabled = !sel.value;
+        $("catStatus").textContent = "Fallback categories loaded.";
+      }
+      async function ensureAuth() {
+        const r = await api("/api/auth/me");
+        if (!r.ok) {
+          location.replace("/shop?auth=signin&next=" + encodeURIComponent("/vendor"));
+          return false;
+        }
+        const j = await r.json();
+        currentActor = j.user;
+        if (!window.TZShop.canAccessVendor(j.user)) {
+          window.TZShop.showToast(t("access.needVendor"), "err");
+          location.replace("/account#vendor");
+          return false;
+        }
+        if (j.user.vendor_id) VENDOR_ID = j.user.vendor_id;
+        return true;
+      }
+
+      async function loadVendorProfile() {
+        const r = await api(`/api/vendors/${VENDOR_ID}/dashboard`);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Could not load vendor profile");
+        $("vpName").value = j.vendor.name || "";
+        $("vpZone").value = j.vendor.zone || "";
+        $("vpPickup").value = j.vendor.pickup_label || "";
+        $("vpPhone").value = j.vendor.shop_phone || "";
+        $("vpOpen").value = j.vendor.shop_open ? "1" : "0";
+      }
+
+      function loadAccountProfile() {
+        if (!currentActor) return;
+        $("apName").value = currentActor.name || "";
+        $("apPhone").value = currentActor.phone || "";
+        $("apEmail").value = currentActor.email || "";
+        $("apLocale").value = currentActor.locale || "en";
+      }
+
+      function renderCategoryPick(categories) {
+        const host = $("catPick");
+        const sel = $("pCat");
+        if (!host || !sel) return;
+        if (!categories.length) {
+          host.innerHTML = "";
+          return;
+        }
+        host.innerHTML = categories
+          .map(
+            (c) =>
+              `<button type="button" class="cat-pick-btn" data-id="${TZShop.esc(c.id)}">${TZShop.esc(c.name || "Category")}</button>`
+          )
+          .join("");
+        host.querySelectorAll(".cat-pick-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            sel.value = btn.dataset.id;
+            host.querySelectorAll(".cat-pick-btn").forEach((b) => b.classList.toggle("on", b === btn));
+            $("btnAddProduct").disabled = !sel.value;
+          });
+        });
+        if (sel.value) {
+          host.querySelectorAll(".cat-pick-btn").forEach((b) => b.classList.toggle("on", b.dataset.id === sel.value));
+        }
+      }
+
+      function tab(name) {
+        document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+        document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + name));
+      }
+      document.getElementById("tabs").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-tab]");
+        if (b) tab(b.dataset.tab);
+      });
+
+      function playBeep() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          o.frequency.value = 880;
+          g.gain.setValueAtTime(0.12, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 0.2);
+          setTimeout(() => ctx.close(), 400);
+        } catch (_) {}
+      }
+
+      function buzz() {
+        if (navigator.vibrate) navigator.vibrate([120, 40, 120]);
+      }
+
+      function playPaymentChime() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const playTone = (freq, start, dur) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(0.1, start);
+            g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start(start);
+            o.stop(start + dur);
+          };
+          const t0 = ctx.currentTime;
+          playTone(1046, t0, 0.12);
+          playTone(1318, t0 + 0.14, 0.18);
+          setTimeout(() => ctx.close(), 500);
+        } catch (_) {
+          playBeep();
+        }
+      }
+
+      function providerLabel(provider) {
+        const key = { mpesa: "payMpesa", airtel_money: "payAirtel", tigo_pesa: "payTigo", halopesa: "payHalo" }[provider];
+        return key ? t(`vendor.${key}`) : t("vendor.payMobile");
+      }
+
+      function formatPaymentNotif(n) {
+        return t("vendor.notifPayment", {
+          customer: n.customer_name || "Customer",
+          amount: (n.amount_tzs ?? 0).toLocaleString() + " TZS",
+          provider: providerLabel(n.provider),
+          orderId: n.order_id || "—",
+        });
+      }
+
+      function showBrowserNotification(n) {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        try {
+          new Notification(t("vendor.notifPaymentShort"), {
+            body: formatPaymentNotif(n),
+            tag: `pay-${n.order_id}`,
+          });
+        } catch (_) {}
+      }
+
+      let audioUnlocked = false;
+      document.addEventListener(
+        "click",
+        () => {
+          audioUnlocked = true;
+          if (typeof Notification !== "undefined" && Notification.permission === "default") {
+            Notification.requestPermission().catch(() => {});
+          }
+        },
+        { once: true }
+      );
+
+      const knownNotifIds = new Set();
+      const recentPaidOrders = new Set();
+
+      async function pollNotifications() {
+        const r = await api(`/api/vendors/${VENDOR_ID}/notifications?unread=1`);
+        if (!r.ok) return;
+        const j = await r.json();
+        const items = j.notifications || [];
+        const toAck = [];
+        for (const n of items) {
+          if (n.type !== "payment_received" || knownNotifIds.has(n.id)) continue;
+          knownNotifIds.add(n.id);
+          if (n.order_id) recentPaidOrders.add(n.order_id);
+          playPaymentChime();
+          buzz();
+          showBrowserNotification(n);
+          TZShop.showToast(formatPaymentNotif(n), "ok");
+          toAck.push(n.id);
+          const el = document.createElement("div");
+          el.className = "vendor-notif";
+          el.innerHTML = `<strong>${TZShop.esc(t("vendor.notifPaymentShort"))}</strong> — ${TZShop.esc(formatPaymentNotif(n))}<time>${new Date(n.created_at).toLocaleString()}</time>`;
+          $("vendorNotifStack").prepend(el);
+        }
+        if (toAck.length) {
+          await api(`/api/vendors/${VENDOR_ID}/notifications/ack`, {
+            method: "POST",
+            body: JSON.stringify({ ids: toAck }),
+          });
+        }
+      }
+
+      let pollPrimed = false;
+      const knownNew = new Set();
+
+      async function loadDashboard() {
+        const r = await api(`/api/vendors/${VENDOR_ID}/dashboard`);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || r.statusText);
+        $("shopTitle").textContent = d.vendor.name;
+        const o = d.vendor.shop_open;
+        $("shopOpen").checked = o;
+        $("shopToggleRow").classList.toggle("closed", !o);
+        $("toggleLabel").textContent = o ? t("vendor.shopOpenLong") : t("vendor.shopClosedLong");
+        const s = d.stats;
+        $("stats").innerHTML = `
+          <div class="stat"><span>Orders today</span><b>${s.orders_today}</b></div>
+          <div class="stat"><span>Revenue today (TZS)</span><b>${s.revenue_today_tzs.toLocaleString()}</b></div>
+          <div class="stat"><span>Pending pipeline</span><b>${s.pending_orders}</b></div>
+          <div class="stat"><span>Rating</span><b>${d.vendor.rating_avg}</b><span style="display:block;margin-top:4px">${d.vendor.rating_count} reviews</span></div>
+        `;
+        const max = Math.max(1, ...d.weekly_sales_tzs.map((x) => x.total_tzs));
+        $("weekChart").innerHTML = d.weekly_sales_tzs
+          .map((x) => {
+            const h = Math.round((x.total_tzs / max) * 110);
+            return `<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><small>${x.label}<br />${(x.total_tzs / 1000).toFixed(0)}k</small></div>`;
+          })
+          .join("");
+        const low = d.low_stock_products;
+        $("lowStock").innerHTML = low.length
+          ? low.map((p) => `<li><strong>${p.name}</strong> — ${p.stock_qty} left (≤ ${p.threshold})</li>`).join("")
+          : "<li>None — all SKUs above threshold or out of stock.</li>";
+      }
+
+      $("shopOpen").addEventListener("change", async () => {
+        const shop_open = $("shopOpen").checked;
+        const r = await api(`/api/vendors/${VENDOR_ID}`, {
+          method: "PATCH",
+          body: JSON.stringify({ shop_open }),
+        });
+        const j = await r.json();
+        if (!r.ok) {
+          $("shopOpen").checked = !shop_open;
+          alert(j.error || "Failed");
+          return;
+        }
+        await loadDashboard();
+      });
+
+      $("btnSaveVendorProfile").addEventListener("click", async () => {
+        const body = {
+          name: $("vpName").value.trim(),
+          zone: $("vpZone").value.trim(),
+          pickup_label: $("vpPickup").value.trim(),
+          shop_phone: $("vpPhone").value.trim(),
+          shop_open: $("vpOpen").value === "1",
+        };
+        const r = await api(`/api/vendors/${VENDOR_ID}/profile`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) return alert(j.error || "Failed to save vendor profile");
+        TZShop.showToast("Vendor profile saved.", "ok");
+        await loadDashboard();
+      });
+
+      $("btnSaveAccountProfile").addEventListener("click", async () => {
+        const body = {
+          name: $("apName").value.trim(),
+          phone: $("apPhone").value.trim(),
+          email: $("apEmail").value.trim(),
+          locale: $("apLocale").value.trim() || "en",
+        };
+        const next = $("apNewPass").value;
+        if (next) {
+          body.current_password = $("apCurrentPass").value;
+          body.new_password = next;
+        }
+        const r = await api("/api/auth/me", { method: "PATCH", body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) return alert(j.error || "Failed to save account profile");
+        const me = await api("/api/auth/me");
+        if (me.ok) {
+          const m = await me.json();
+          currentActor = m.user;
+        }
+        $("apCurrentPass").value = "";
+        $("apNewPass").value = "";
+        loadAccountProfile();
+        TZShop.showToast("Account profile saved.", "ok");
+      });
+
+      function fmtOrder(o) {
+        const lines = o.lines.map((l) => `${Number(l.qty)}x ${l.name}`).join(", ");
+        const safeCustomer = TZShop.esc(o.customer_name || "Customer");
+        const safeLines = TZShop.esc(lines);
+        const safePhone = TZShop.esc(o.customer_phone || "—");
+        const walletPaid =
+          o.status === "new" && o.payment_method && o.payment_method !== "cod" && recentPaidOrders.has(o.id);
+        const payBadge = walletPaid
+          ? ` <span class="badge badge--pay">${TZShop.esc(t("vendor.badgePaid"))} · ${TZShop.esc(providerLabel(o.payment_method))}</span>`
+          : "";
+        return `
+          <div class="order${walletPaid ? " order--paid-wallet" : ""}" data-id="${o.id}">
+            <h3>${safeCustomer} · ${o.total_tzs.toLocaleString()} TZS</h3>
+            <div class="meta">${safeLines}</div>
+            <div class="meta" style="margin-top:0.35rem"><strong>${TZShop.esc(t("vendor.customerCity"))}:</strong> ${TZShop.esc(o.customer_city || "—")}${o.delivery_area ? ` · <strong>${TZShop.esc(t("vendor.customerArea"))}</strong> ${TZShop.esc(o.delivery_area)}` : ""}</div>
+            <div class="meta" style="margin-top:0.2rem"><strong>${TZShop.esc(t("vendor.deliveryAddress"))}:</strong> ${TZShop.esc(o.dropoff_label || "—")}</div>
+            <div><span class="badge">${TZShop.esc(o.status)}</span>${payBadge} · ${TZShop.esc(o.payment_method)} · ${safePhone}</div>
+            <div class="actions" data-actions-for="${o.id}"></div>
+          </div>
+        `;
+      }
+
+      function actionButtons(o) {
+        const el = document.querySelector(`[data-actions-for="${o.id}"]`);
+        if (!el) return;
+        el.innerHTML = "";
+        const add = (label, cls, fn) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "action " + cls;
+          b.textContent = label;
+          b.onclick = fn;
+          el.appendChild(b);
+        };
+        if (o.status === "new") {
+          add("Accept", "", () => doAccept(o.id));
+          add("Decline", "danger", () => doDecline(o.id));
+        } else if (o.status === "preparing") {
+          add("Mark ready for pickup (starts driver dispatch)", "secondary", () => doAdvance(o.id, "ready_for_pickup"));
+        } else if (o.status === "ready_for_pickup") {
+          add("Waiting for driver…", "ghost", () => {});
+          el.querySelector("button").disabled = true;
+        } else if (o.status === "driver_en_route_pickup" || o.status === "driver_en_route_delivery") {
+          add("Out with driver — track in driver app", "ghost", () => {});
+          el.querySelector("button").disabled = true;
+        } else if (o.status === "placed" || o.status === "payment_pending" || o.status === "paid") {
+          add("Awaiting customer payment", "ghost", () => {});
+          el.querySelector("button").disabled = true;
+        }
+      }
+
+      async function doAccept(id) {
+        const r = await api(`/api/vendors/${VENDOR_ID}/orders/${id}/accept`, { method: "POST", body: "{}" });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error || "Failed");
+        await refreshOrders();
+        await loadDashboard();
+      }
+      async function doDecline(id) {
+        if (!confirm("Decline this order?")) return;
+        const r = await api(`/api/vendors/${VENDOR_ID}/orders/${id}/decline`, { method: "POST", body: "{}" });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error || "Failed");
+        await refreshOrders();
+        await loadDashboard();
+      }
+      async function doAdvance(id, to) {
+        const r = await api(`/api/vendors/${VENDOR_ID}/orders/${id}/advance`, {
+          method: "POST",
+          body: JSON.stringify({ to }),
+        });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error || "Failed");
+        await refreshOrders();
+        await loadDashboard();
+        await loadEarnings();
+      }
+
+      async function refreshOrders() {
+        const [a, h] = await Promise.all([
+          api(`/api/vendors/${VENDOR_ID}/orders?scope=active`),
+          api(`/api/vendors/${VENDOR_ID}/orders?scope=history`),
+        ]);
+        const ja = await a.json();
+        const jh = await h.json();
+        $("ordersActive").innerHTML = ja.orders.length ? ja.orders.map(fmtOrder).join("") : '<p class="muted">No active orders.</p>';
+        ja.orders.forEach(actionButtons);
+        $("ordersHistory").innerHTML = jh.orders.length ? jh.orders.map(fmtOrder).join("") : '<p class="muted">No history yet.</p>';
+
+        const fresh = ja.orders.filter((o) => o.status === "new").map((o) => o.id);
+        if (pollPrimed) {
+          for (const id of fresh) {
+            if (!knownNew.has(id)) {
+              const ord = ja.orders.find((o) => o.id === id);
+              const walletJustPaid =
+                ord && ord.payment_method !== "cod" && recentPaidOrders.has(id);
+              if (!walletJustPaid) {
+                playBeep();
+                buzz();
+              }
+              knownNew.add(id);
+            }
+          }
+        } else {
+          fresh.forEach((id) => knownNew.add(id));
+          pollPrimed = true;
+        }
+      }
+
+      async function loadCategoriesIntoSelect({ createDefault = true } = {}) {
+        const sel = $("pCat");
+        const status = $("catStatus");
+        const saveBtn = $("btnAddProduct");
+        status.textContent = "Refreshing categories...";
+        const r = await api(`/api/vendors/${VENDOR_ID}/categories`);
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          status.textContent = j.error || "Could not load categories. Using fallback list.";
+          seedCategorySelectFallback();
+          return;
+        }
+        const categories = Array.isArray(j.categories) ? j.categories.filter((c) => c && c.id && c.name) : [];
+        if (!categories.length && createDefault) {
+          const defaults = [
+            { name: "Groceries", slug: "groceries" },
+            { name: "Household", slug: "household" },
+            { name: "Beverages", slug: "beverages" },
+          ];
+          const creates = await Promise.all(
+            defaults.map((d) =>
+              api(`/api/vendors/${VENDOR_ID}/categories`, {
+                method: "POST",
+                body: JSON.stringify(d),
+              }).catch(() => null)
+            )
+          );
+          if (creates.some((x) => x && x.ok)) return loadCategoriesIntoSelect({ createDefault: false });
+        }
+        if (!categories.length) {
+          status.textContent = "Using fallback category list. Add a new category below if needed.";
+          seedCategorySelectFallback();
+          return;
+        }
+        sel.disabled = false;
+        sel.innerHTML =
+          `<option value="">${TZShop.esc(categoryPlaceholder())}</option>` +
+          categories.map((c) => `<option value="${c.id}">${TZShop.esc(c.name || "Category")}</option>`).join("");
+        renderCategoryPick(categories);
+        status.textContent = `${categories.length} categor${categories.length === 1 ? "y" : "ies"} available.`;
+        saveBtn.disabled = !sel.value;
+      }
+
+      $("pCat").addEventListener("change", () => {
+        $("btnAddProduct").disabled = !$("pCat").value;
+      });
+
+      async function loadProductsTable() {
+        const r = await api(`/api/vendors/${VENDOR_ID}/products?include_inactive=1`);
+        const j = await r.json();
+        const dash = await (await api(`/api/vendors/${VENDOR_ID}/dashboard`)).json();
+        const lowIds = new Set((dash.low_stock_products || []).map((p) => p.id));
+        $("prodRows").innerHTML = j.products
+          .map((p) => {
+            const low = lowIds.has(p.id) ? "low" : "";
+            return `<tr class="${low}">
+            <td><input type="checkbox" ${p.active ? "checked" : ""} data-pid="${p.id}" class="tog-active" /></td>
+            <td>${p.name}</td>
+            <td>${p.price_tzs.toLocaleString()}</td>
+            <td>${p.stock_qty}</td>
+          </tr>`;
+          })
+          .join("");
+        document.querySelectorAll(".tog-active").forEach((cb) => {
+          cb.addEventListener("change", async () => {
+            const id = cb.dataset.pid;
+            const r2 = await api(`/api/vendors/${VENDOR_ID}/products/${id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ active: cb.checked }),
+            });
+            if (!r2.ok) alert((await r2.json()).error);
+            await loadDashboard();
+          });
+        });
+      }
+
+      $("btnAddProduct").addEventListener("click", async () => {
+        if (!$("pCat").value) {
+          TZShop.showToast(t("vendor.chooseCategory"), "err");
+          $("pCat").focus();
+          return;
+        }
+        let image_url = null;
+        const file = $("pPhoto").files[0];
+        if (file) {
+          image_url = await new Promise((res, rej) => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.onerror = rej;
+            fr.readAsDataURL(file);
+          });
+        }
+        const body = {
+          name: $("pName").value,
+          description: $("pDesc").value,
+          price_tzs: Number($("pPrice").value),
+          stock_qty: Number($("pStock").value),
+          category_id: $("pCat").value || null,
+          image_url,
+        };
+        const r = await api(`/api/vendors/${VENDOR_ID}/products`, { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error || "Failed");
+        $("pName").value = "";
+        $("pDesc").value = "";
+        $("pPrice").value = "";
+        $("pStock").value = "";
+        $("pPhoto").value = "";
+        await loadProductsTable();
+        await loadDashboard();
+        alert("Product added: " + j.product.id);
+      });
+
+      $("btnAddCat").addEventListener("click", async () => {
+        const name = $("newCatName").value.trim();
+        if (!name) return;
+        const r = await api(`/api/vendors/${VENDOR_ID}/categories`, {
+          method: "POST",
+          body: JSON.stringify({ name, slug: name.toLowerCase().replace(/\s+/g, "-") }),
+        });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error);
+        $("newCatName").value = "";
+        await loadCategoriesIntoSelect();
+      });
+
+      $("btnBulk").addEventListener("click", async () => {
+        let updates;
+        try {
+          updates = JSON.parse($("bulkJson").value || "[]");
+        } catch {
+          return alert("Invalid JSON");
+        }
+        const r = await api(`/api/vendors/${VENDOR_ID}/products/bulk-prices`, {
+          method: "POST",
+          body: JSON.stringify({ updates }),
+        });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error);
+        await loadProductsTable();
+        alert("Updated " + j.updated.length + " prices");
+      });
+
+      async function loadEarnings() {
+        const r = await api(`/api/vendors/${VENDOR_ID}/earnings`);
+        const e = await r.json();
+        if (!r.ok) return;
+        $("earnBoxes").innerHTML = `
+          <div class="earn-box"><strong>Gross sales</strong><div>${e.gross_sales_tzs.toLocaleString()} TZS</div></div>
+          <div class="earn-box"><strong>Platform fees</strong><div>${e.platform_fees_tzs.toLocaleString()} TZS</div></div>
+          <div class="earn-box"><strong>Refunds</strong><div>${e.refunds_tzs.toLocaleString()} TZS</div></div>
+          <div class="earn-box"><strong>Net (per-order)</strong><div>${e.net_earnings_tzs.toLocaleString()} TZS</div></div>
+          <div class="earn-box"><strong>Net after refunds</strong><div>${e.net_after_refunds_tzs.toLocaleString()} TZS</div></div>
+          <div class="earn-box"><strong>Available balance</strong><div>${e.available_balance_tzs.toLocaleString()} TZS</div></div>
+          <div class="earn-box"><strong>Next payout</strong><div>${e.next_payout_date}</div></div>
+        `;
+      }
+
+      $("btnPayout").addEventListener("click", async () => {
+        const body = {
+          amount_tzs: Number($("poAmt").value),
+          method: $("poMethod").value,
+          destination: $("poDest").value,
+        };
+        const r = await api(`/api/vendors/${VENDOR_ID}/payouts`, { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json();
+        const ref = j.payout?.id || "—";
+        const amt = j.payout?.amount_tzs;
+        $("poOut").innerHTML = r.ok
+          ? `<div class="ts-result ts-result--ok">
+              <p style="margin:0 0 0.35rem"><strong>Payout request saved</strong></p>
+              <p class="muted" style="margin:0;font-size:0.88rem">Reference <span class="ts-mono">${TZShop.esc(
+                String(ref)
+              )}</span>${amt != null ? ` · ${Number(amt).toLocaleString()} TZS` : ""}</p>
+              <details class="ts-details" style="margin-top:0.4rem"><summary>Technical</summary><pre style="margin:0.5rem 0 0;max-height:140px;font-size:0.72rem;">${TZShop.prettyJson(
+                j
+              )}</pre></details>
+            </div>`
+          : `<div class="ts-result ts-result--err" style="margin:0"><strong>Could not submit</strong> — ${TZShop.esc(
+              String(j.error || r.statusText)
+            )}</div>`;
+        if (!r.ok) alert(j.error);
+        else TZShop.showToast(t("vendor.payoutOk"), "ok");
+        await loadEarnings();
+      });
+
+      $("btnDownloadStmt").addEventListener("click", () => {
+        const m = $("stmtMonth").value;
+        if (!m) return alert("Pick a month");
+        window.open(`/api/vendors/${VENDOR_ID}/earnings/statement?month=${encodeURIComponent(m)}`, "_blank");
+      });
+
+      const now = new Date();
+      $("stmtMonth").value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+      async function init() {
+        await loadDashboard();
+        await loadVendorProfile();
+        loadAccountProfile();
+        await loadCategoriesIntoSelect();
+        await loadProductsTable();
+        await pollNotifications();
+        await refreshOrders();
+        await loadEarnings();
+        async function pollVendorActivity() {
+          await pollNotifications();
+          await refreshOrders();
+        }
+        setInterval(pollVendorActivity, 3000);
+        setInterval(loadDashboard, 20000);
+      }
+
+      window.TZShop.initLang();
+      $("langSelect").value = window.TZShop.getLang();
+      $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value));
+      window.TZShop.onLangChange(applyVendorI18n);
+      applyVendorI18n();
+
+      ensureAuth().then((ok) => {
+        if (!ok) return;
+        init().catch((e) => alert(String(e)));
+      });
+    </script>
+  </body>
+</html>

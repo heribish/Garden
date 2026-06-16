@@ -1,0 +1,26 @@
+# Render blueprint — connect this repo in Render Dashboard → New → Blueprint
+services:
+  - type: web
+    name: garden
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3780
+      - key: ENABLE_DEV_TOOLS
+        value: "0"
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_TTL_MS
+        value: "43200000"
+      - key: API_RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: API_RATE_LIMIT_MAX
+        value: "120"

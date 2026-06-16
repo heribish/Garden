@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d9488" />
+    <title data-i18n="account.metaTitle">My account — garden</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/tzshop.css" />
+  </head>
+  <body class="ts-skin-light ts-page-account">
+    <header class="ts-topnav" role="navigation">
+      <a class="ts-brand" href="/">
+        <span class="ts-brand-mark" aria-hidden="true">G</span>
+        <span data-i18n="nav.brand">arden</span>
+      </a>
+      <nav class="ts-nav">
+        <a href="/shop" data-i18n="account.navShop">Shop</a>
+        <select id="langSelect" aria-label="Language" class="ts-lang-select">
+          <option value="sw">Kiswahili</option>
+          <option value="en">English</option>
+        </select>
+        <button type="button" class="btn btn--secondary btn--sm" id="btnSignOut" data-i18n="auth.signOut">Sign out</button>
+      </nav>
+    </header>
+
+    <main class="ts-account" id="main">
+      <div id="accountLoading" class="ts-account-loading">
+        <p class="ts-muted" data-i18n="auth.checking">Checking session…</p>
+      </div>
+
+      <div id="accountApp" class="ts-account-app" hidden>
+        <aside class="ts-account-nav" aria-label="Account sections">
+          <div class="ts-account-nav__user">
+            <div class="ts-account-avatar" id="acctAvatar" aria-hidden="true">G</div>
+            <div>
+              <strong id="acctName">—</strong>
+              <p class="ts-muted" id="acctEmail">—</p>
+            </div>
+          </div>
+          <nav class="ts-account-nav__links" id="acctNav">
+            <button type="button" class="on" data-pane="overview" data-i18n="account.navOverview">Overview</button>
+            <button type="button" data-pane="orders" data-i18n="account.navOrders">Orders</button>
+            <button type="button" data-pane="profile" data-i18n="account.navProfile">Profile</button>
+            <button type="button" data-pane="vendor" data-i18n="account.navVendor">Sell on Garden</button>
+            <button type="button" data-pane="driver" data-i18n="account.navDriver">Deliver with Garden</button>
+          </nav>
+        </aside>
+
+        <div class="ts-account-main">
+          <section class="ts-account-pane on" id="pane-overview" data-pane="overview">
+            <header class="ts-account-pane__head">
+              <h1 data-i18n="account.navOverview">Overview</h1>
+              <p class="ts-muted" data-i18n="account.overviewLead">Everything connected to your account in one place.</p>
+            </header>
+            <div class="ts-stat-grid" id="acctStats"></div>
+            <h2 class="ts-account-subhead" data-i18n="account.quickLinks">Quick links</h2>
+            <div class="ts-link-cards" id="acctQuickLinks"></div>
+            <h2 class="ts-account-subhead" data-i18n="account.capabilities">Your programs</h2>
+            <div class="ts-cap-grid" id="acctCaps"></div>
+          </section>
+
+          <section class="ts-account-pane" id="pane-orders" data-pane="orders" hidden>
+            <header class="ts-account-pane__head">
+              <h1 data-i18n="account.navOrders">Orders</h1>
+              <p class="ts-muted" data-i18n="account.ordersLead">Purchases placed with this account.</p>
+            </header>
+            <div id="acctOrders" class="ts-order-list"></div>
+          </section>
+
+          <section class="ts-account-pane" id="pane-profile" data-pane="profile" hidden>
+            <header class="ts-account-pane__head">
+              <h1 data-i18n="account.navProfile">Profile</h1>
+              <p class="ts-muted" data-i18n="account.profileLead">Keep your contact details up to date.</p>
+            </header>
+            <form class="ts-account-form" id="profileForm">
+              <div class="ts-field">
+                <label for="pfName" data-i18n="auth.yourName">Your name</label>
+                <input id="pfName" name="name" autocomplete="name" />
+              </div>
+              <div class="ts-field">
+                <label for="pfPhone" data-i18n="checkout.phone">Phone</label>
+                <input id="pfPhone" name="phone" autocomplete="tel" />
+              </div>
+              <div class="ts-field">
+                <label for="pfEmail" data-i18n="auth.emailLabel">Email</label>
+                <input id="pfEmail" name="email" autocomplete="email" />
+              </div>
+              <button type="submit" class="btn btn--primary" data-i18n="auth.saveProfile">Save profile</button>
+            </form>
+            <details class="ts-account-details">
+              <summary data-i18n="auth.changePassword">Change password</summary>
+              <form class="ts-account-form" id="passwordForm" style="margin-top: 0.75rem">
+                <div class="ts-field">
+                  <label for="pfCurrent" data-i18n="auth.currentPassword">Current password</label>
+                  <input id="pfCurrent" type="password" autocomplete="current-password" />
+                </div>
+                <div class="ts-field">
+                  <label for="pfNew" data-i18n="auth.newPassword">New password (8+ chars)</label>
+                  <input id="pfNew" type="password" autocomplete="new-password" />
+                </div>
+                <button type="submit" class="btn btn--secondary" data-i18n="account.updatePassword">Update password</button>
+              </form>
+            </details>
+          </section>
+
+          <section class="ts-account-pane" id="pane-vendor" data-pane="vendor" hidden>
+            <header class="ts-account-pane__head">
+              <h1 data-i18n="account.navVendor">Sell on Garden</h1>
+              <p class="ts-muted" data-i18n="account.vendorLead">List your shop and reach customers across Dar es Salaam.</p>
+            </header>
+            <div id="vendorStatus" class="ts-status-card"></div>
+            <form class="ts-account-form" id="vendorForm" hidden>
+              <div class="ts-field">
+                <label for="vbName" data-i18n="auth.businessName">Business name</label>
+                <input id="vbName" required />
+              </div>
+              <div class="ts-field">
+                <label for="vbZone" data-i18n="auth.zone">Area / zone</label>
+                <input id="vbZone" required placeholder="Kinondoni" />
+              </div>
+              <div class="ts-field">
+                <label for="vbPhone" data-i18n="checkout.phone">Phone</label>
+                <input id="vbPhone" required />
+              </div>
+              <button type="submit" class="btn btn--primary" data-i18n="account.submitVendorApp">Submit application</button>
+            </form>
+          </section>
+
+          <section class="ts-account-pane" id="pane-driver" data-pane="driver" hidden>
+            <header class="ts-account-pane__head">
+              <h1 data-i18n="account.navDriver">Deliver with Garden</h1>
+              <p class="ts-muted" data-i18n="account.driverLead">Verified drivers need a valid licence and roadworthy vehicle.</p>
+            </header>
+            <div id="driverStatus" class="ts-status-card"></div>
+            <form class="ts-account-form" id="driverForm" hidden>
+              <div class="ts-form-grid">
+                <div class="ts-field">
+                  <label for="drName" data-i18n="auth.yourName">Full name</label>
+                  <input id="drName" required />
+                </div>
+                <div class="ts-field">
+                  <label for="drPhone" data-i18n="checkout.phone">Phone</label>
+                  <input id="drPhone" required />
+                </div>
+                <div class="ts-field">
+                  <label for="drNid" data-i18n="account.nationalId">National ID</label>
+                  <input id="drNid" required />
+                </div>
+                <div class="ts-field">
+                  <label for="drLicense" data-i18n="account.licenseNo">Driving licence number</label>
+                  <input id="drLicense" required />
+                </div>
+                <div class="ts-field">
+                  <label for="drExpiry" data-i18n="account.licenseExpiry">Licence expiry</label>
+                  <input id="drExpiry" type="date" required />
+                </div>
+                <div class="ts-field">
+                  <label for="drVehicle" data-i18n="account.vehicleType">Vehicle type</label>
+                  <select id="drVehicle" required>
+                    <option value="">—</option>
+                    <option value="Motorbike">Motorbike</option>
+                    <option value="Bicycle">Bicycle</option>
+                    <option value="Car">Car</option>
+                    <option value="Van">Van</option>
+                  </select>
+                </div>
+                <div class="ts-field">
+                  <label for="drPlate" data-i18n="account.plate">Plate number</label>
+                  <input id="drPlate" required />
+                </div>
+                <div class="ts-field">
+                  <label for="drColor" data-i18n="account.vehicleColor">Vehicle colour</label>
+                  <input id="drColor" />
+                </div>
+                <div class="ts-field ts-field--full">
+                  <label for="drEmergency" data-i18n="account.emergency">Emergency contact</label>
+                  <input id="drEmergency" />
+                </div>
+              </div>
+              <p class="ts-details" data-i18n="account.driverDisclaimer">
+                By submitting, you confirm documents are valid and your vehicle meets Garden safety standards. Our team reviews every application.
+              </p>
+              <button type="submit" class="btn btn--primary" data-i18n="account.submitDriverApp">Submit for verification</button>
+            </form>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script src="/assets/i18n.js"></script>
+    <script src="/assets/tzshop.js"></script>
+    <script>
+      (function () {
+        const $ = (id) => document.getElementById(id);
+        let account = null;
+
+        async function api(path, options = {}) {
+          const res = await fetch(path, {
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+            ...options,
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(j.error || res.statusText);
+          return j;
+        }
+
+        function statusPill(status) {
+          const map = {
+            active: "ok",
+            verified: "ok",
+            approved: "ok",
+            pending: "warn",
+            rejected: "bad",
+            none: "muted",
+          };
+          const cls = map[status] || "muted";
+          return `<span class="ts-pill ts-pill--${cls}">${TZShop.esc(status)}</span>`;
+        }
+
+        function formatDate(iso) {
+          if (!iso) return "—";
+          try {
+            return new Date(iso).toLocaleString(TZShop.getLang() === "sw" ? "sw-TZ" : "en-TZ", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            });
+          } catch {
+            return iso;
+          }
+        }
+
+        function orderStatusLabel(s) {
+          return String(s || "").replace(/_/g, " ");
+        }
+
+        function setPane(name) {
+          document.querySelectorAll(".ts-account-nav__links button").forEach((b) => {
+            b.classList.toggle("on", b.dataset.pane === name);
+          });
+          document.querySelectorAll(".ts-account-pane").forEach((p) => {
+            const on = p.dataset.pane === name;
+            p.classList.toggle("on", on);
+            p.hidden = !on;
+          });
+        }
+
+        function renderOverview() {
+          const caps = account.capabilities;
+          $("acctStats").innerHTML = `
+            <div class="ts-stat-card">
+              <span class="ts-stat-card__label">${TZShop.esc(TZShop.t("account.statOrders"))}</span>
+              <strong class="ts-stat-card__value">${account.stats.orders_count}</strong>
+            </div>
+            <div class="ts-stat-card">
+              <span class="ts-stat-card__label">${TZShop.esc(TZShop.t("account.statSpent"))}</span>
+              <strong class="ts-stat-card__value">${TZShop.esc(TZShop.moneyTzs(account.stats.total_spent_tzs))}</strong>
+            </div>
+          `;
+          const links = account.quick_links || [];
+          $("acctQuickLinks").innerHTML = links.length
+            ? links
+                .map(
+                  (l) => `<a class="ts-link-card" href="${TZShop.esc(l.href)}">
+                <span>${TZShop.esc(l.label)}</span>
+                <span aria-hidden="true">→</span>
+              </a>`
+                )
+                .join("")
+            : `<p class="ts-muted">${TZShop.esc(TZShop.t("account.noLinks"))}</p>`;
+
+          const capRows = [
+            { key: "shopper", title: TZShop.t("account.capShopper"), status: "active", desc: TZShop.t("account.capShopperDesc") },
+            {
+              key: "vendor",
+              title: TZShop.t("account.capVendor"),
+              status: caps.vendor.status,
+              desc: TZShop.t("account.capVendorDesc"),
+            },
+            {
+              key: "driver",
+              title: TZShop.t("account.capDriver"),
+              status: caps.driver.status,
+              desc: TZShop.t("account.capDriverDesc"),
+            },
+          ];
+          $("acctCaps").innerHTML = capRows
+            .map(
+              (c) => `<article class="ts-cap-card">
+              <div class="ts-cap-card__head">
+                <h3>${TZShop.esc(c.title)}</h3>
+                ${statusPill(c.status)}
+              </div>
+              <p class="ts-muted">${TZShop.esc(c.desc)}</p>
+            </article>`
+            )
+            .join("");
+        }
+
+        function renderOrders() {
+          const orders = account.orders || [];
+          if (!orders.length) {
+            $("acctOrders").innerHTML = `<div class="ts-empty-state">
+              <p>${TZShop.esc(TZShop.t("account.noOrders"))}</p>
+              <a class="btn btn--primary" href="/shop">${TZShop.esc(TZShop.t("account.startShopping"))}</a>
+            </div>`;
+            return;
+          }
+          $("acctOrders").innerHTML = orders
+            .map(
+              (o) => `<article class="ts-order-card">
+              <div class="ts-order-card__head">
+                <strong>${TZShop.esc(o.id)}</strong>
+                ${statusPill(o.status)}
+              </div>
+              <p class="ts-muted">${TZShop.esc(formatDate(o.created_at))} · ${TZShop.esc(o.dropoff_label || "")}</p>
+              <div class="ts-order-card__foot">
+                <span>${TZShop.esc(TZShop.moneyTzs(o.total_tzs))}</span>
+                <span class="ts-muted">${TZShop.esc(orderStatusLabel(o.status))}</span>
+              </div>
+            </article>`
+            )
+            .join("");
+        }
+
+        function renderVendorPane() {
+          const v = account.capabilities.vendor;
+          const app = v.application;
+          if (v.status === "active" && v.vendor_id) {
+            $("vendorStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--ok">
+              <h3>${TZShop.esc(TZShop.t("account.vendorActive"))}</h3>
+              <p class="ts-muted">${TZShop.esc(TZShop.t("account.vendorActiveDesc"))}</p>
+              <a class="btn btn--primary" href="/vendor">${TZShop.esc(TZShop.t("auth.goVendor"))}</a>
+            </div>`;
+            $("vendorForm").hidden = true;
+            return;
+          }
+          if (app && app.status === "pending") {
+            $("vendorStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--warn">
+              <h3>${TZShop.esc(TZShop.t("account.vendorPending"))}</h3>
+              <p class="ts-muted">${TZShop.esc(app.business_name)} · ${TZShop.esc(app.zone)}</p>
+              <p>${statusPill("pending")}</p>
+            </div>`;
+            $("vendorForm").hidden = true;
+            return;
+          }
+          if (app && app.status === "rejected") {
+            $("vendorStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--bad">
+              <h3>${TZShop.esc(TZShop.t("account.vendorRejected"))}</h3>
+              <p class="ts-muted">${TZShop.esc(TZShop.t("account.vendorRejectedDesc"))}</p>
+            </div>`;
+          } else {
+            $("vendorStatus").innerHTML = `<div class="ts-status-card__inner">
+              <h3>${TZShop.esc(TZShop.t("account.vendorInvite"))}</h3>
+              <p class="ts-muted">${TZShop.esc(TZShop.t("account.vendorInviteDesc"))}</p>
+            </div>`;
+          }
+          $("vendorForm").hidden = false;
+          $("vbName").value = app?.business_name || account.user.name || "";
+          $("vbZone").value = app?.zone || "";
+          $("vbPhone").value = app?.contact_phone || account.user.phone || "";
+        }
+
+        function renderDriverPane() {
+          const d = account.capabilities.driver;
+          const app = d.application;
+          if (d.status === "verified" && d.driver_id) {
+            $("driverStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--ok">
+              <h3>${TZShop.esc(TZShop.t("account.driverVerified"))}</h3>
+              <p class="ts-muted">${TZShop.esc(TZShop.t("account.driverVerifiedDesc"))}</p>
+              <a class="btn btn--primary" href="/driver">${TZShop.esc(TZShop.t("auth.goDriver"))}</a>
+            </div>`;
+            $("driverForm").hidden = true;
+            return;
+          }
+          if (d.status === "pending" || (app && app.status === "pending")) {
+            $("driverStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--warn">
+              <h3>${TZShop.esc(TZShop.t("account.driverPending"))}</h3>
+              <p class="ts-muted">${TZShop.esc(TZShop.t("account.driverPendingDesc"))}</p>
+              ${statusPill("pending")}
+            </div>`;
+            $("driverForm").hidden = true;
+            return;
+          }
+          if (d.status === "rejected") {
+            $("driverStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--bad">
+              <h3>${TZShop.esc(TZShop.t("account.driverRejected"))}</h3>
+              <p class="ts-muted">${app?.rejection_reason || TZShop.t("account.driverRejectedDesc")}</p>
+            </div>`;
+          } else {
+            $("driverStatus").innerHTML = `<div class="ts-status-card__inner">
+              <h3>${TZShop.esc(TZShop.t("account.driverInvite"))}</h3>
+              <p class="ts-muted">${TZShop.esc(TZShop.t("account.driverInviteDesc"))}</p>
+            </div>`;
+          }
+          $("driverForm").hidden = false;
+          $("drName").value = account.user.name || "";
+          $("drPhone").value = account.user.phone || "";
+        }
+
+        function renderAll() {
+          const u = account.user;
+          $("acctName").textContent = u.name || "—";
+          $("acctEmail").textContent = u.email || u.phone || "—";
+          $("acctAvatar").textContent = (u.name || "G").charAt(0).toUpperCase();
+          $("pfName").value = u.name || "";
+          $("pfPhone").value = u.phone || "";
+          $("pfEmail").value = u.email || "";
+          renderOverview();
+          renderOrders();
+          renderVendorPane();
+          renderDriverPane();
+        }
+
+        async function loadAccount() {
+          const j = await api("/api/account");
+          account = j.account;
+          $("accountLoading").hidden = true;
+          $("accountApp").hidden = false;
+          renderAll();
+        }
+
+        function redirectToSignIn() {
+          const next = encodeURIComponent("/account" + (location.hash || ""));
+          location.replace("/shop?auth=signin&next=" + next);
+        }
+
+        async function init() {
+          TZShop.initLang();
+          TZShop.applyDataI18n();
+          $("langSelect").value = TZShop.getLang();
+          $("langSelect").addEventListener("change", () => {
+            TZShop.setLang($("langSelect").value);
+            TZShop.applyDataI18n();
+            if (account) renderAll();
+          });
+
+          document.querySelectorAll(".ts-account-nav__links button").forEach((b) => {
+            b.addEventListener("click", () => setPane(b.dataset.pane));
+          });
+
+          const hash = (location.hash || "").replace("#", "");
+          if (hash) setPane(hash);
+
+          const notice = new URLSearchParams(location.search).get("notice");
+          if (notice === "admin") {
+            TZShop.showToast(TZShop.t("access.needAdmin"), "info");
+          }
+
+          $("btnSignOut").addEventListener("click", async () => {
+            await api("/api/auth/logout", { method: "POST", body: "{}" });
+            location.href = "/";
+          });
+
+          $("profileForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            try {
+              await api("/api/auth/me", {
+                method: "PATCH",
+                body: JSON.stringify({
+                  name: $("pfName").value,
+                  phone: $("pfPhone").value,
+                  email: $("pfEmail").value,
+                }),
+              });
+              TZShop.showToast(TZShop.t("account.profileSaved"), "success");
+              await loadAccount();
+            } catch (err) {
+              TZShop.showToast(err.message, "error");
+            }
+          });
+
+          $("passwordForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            try {
+              await api("/api/auth/me", {
+                method: "PATCH",
+                body: JSON.stringify({
+                  current_password: $("pfCurrent").value,
+                  new_password: $("pfNew").value,
+                }),
+              });
+              TZShop.showToast(TZShop.t("account.passwordSaved"), "success");
+              $("pfCurrent").value = "";
+              $("pfNew").value = "";
+            } catch (err) {
+              TZShop.showToast(err.message, "error");
+            }
+          });
+
+          $("vendorForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            try {
+              await api("/api/account/vendor-application", {
+                method: "POST",
+                body: JSON.stringify({
+                  business_name: $("vbName").value,
+                  zone: $("vbZone").value,
+                  contact_phone: $("vbPhone").value,
+                  contact_name: account.user.name,
+                  contact_email: account.user.email,
+                }),
+              });
+              TZShop.showToast(TZShop.t("account.vendorSubmitted"), "success");
+              await loadAccount();
+              setPane("vendor");
+            } catch (err) {
+              TZShop.showToast(err.message, "error");
+            }
+          });
+
+          $("driverForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            try {
+              await api("/api/account/driver-application", {
+                method: "POST",
+                body: JSON.stringify({
+                  full_name: $("drName").value,
+                  phone: $("drPhone").value,
+                  national_id: $("drNid").value,
+                  license_number: $("drLicense").value,
+                  license_expiry: $("drExpiry").value,
+                  vehicle_type: $("drVehicle").value,
+                  vehicle_plate: $("drPlate").value,
+                  vehicle_color: $("drColor").value,
+                  emergency_contact: $("drEmergency").value,
+                }),
+              });
+              TZShop.showToast(TZShop.t("account.driverSubmitted"), "success");
+              await loadAccount();
+              setPane("driver");
+            } catch (err) {
+              TZShop.showToast(err.message, "error");
+            }
+          });
+
+          try {
+            const me = await api("/api/auth/me");
+            if (!me.user) {
+              redirectToSignIn();
+              return;
+            }
+            await loadAccount();
+          } catch {
+            redirectToSignIn();
+          }
+        }
+
+        init();
+      })();
+    </script>
+  </body>
+</html>

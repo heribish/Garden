@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>garden — Driver app</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="/assets/tzshop.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <style>
+      :root {
+        font-family: var(--tz-font, "Plus Jakarta Sans", system-ui, sans-serif);
+        color: #0f172a;
+        background: #0b1220;
+      }
+      body {
+        margin: 0;
+        color: #e2e8f0;
+      }
+      header {
+        padding: 12px 16px;
+        background: #111827;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      h1 {
+        font-size: 1.05rem;
+        margin: 0;
+      }
+      a {
+        color: #7dd3fc;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      #map {
+        height: 46vh;
+        min-height: 220px;
+        width: 100%;
+      }
+      .route-stop {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 8px 0;
+        border-bottom: 1px solid #334155;
+      }
+      .route-stop:last-child {
+        border-bottom: none;
+      }
+      .route-num {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #0d9488;
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .route-num--current {
+        background: #f97316;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35);
+      }
+      .route-num--pending {
+        background: #475569;
+      }
+      .route-num--queue {
+        background: #1e40af;
+      }
+      .map-pin-num {
+        background: #0d9488;
+        color: #fff;
+        font-weight: 700;
+        font-size: 12px;
+        width: 26px;
+        height: 26px;
+        line-height: 26px;
+        text-align: center;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      }
+      .map-pin-num--current {
+        background: #f97316;
+      }
+      .map-pin-truck {
+        font-size: 22px;
+        line-height: 1;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+      }
+      .panel {
+        padding: 12px 16px;
+        background: #1e293b;
+        border-top: 1px solid #334155;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #0d9488;
+        color: #fff;
+      }
+      button.ghost {
+        background: #334155;
+        color: #e2e8f0;
+      }
+      button.danger {
+        background: #b91c1c;
+        color: #fff;
+      }
+      .muted {
+        color: #94a3b8;
+        font-size: 0.88rem;
+      }
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 16px;
+      }
+      .modal-bg.show {
+        display: flex;
+      }
+      .modal {
+        background: #0f172a;
+        border-radius: 14px;
+        padding: 18px;
+        max-width: 420px;
+        width: 100%;
+        border: 1px solid #334155;
+      }
+      .big {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f97316;
+      }
+      .chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 120px;
+        margin-top: 8px;
+      }
+      .bar-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+      }
+      .bar {
+        width: 100%;
+        max-width: 36px;
+        background: linear-gradient(#14b8a6, #0f766e);
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+      }
+      .bar-wrap small {
+        font-size: 0.65rem;
+        color: #94a3b8;
+        margin-top: 4px;
+        text-align: center;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #475569;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+    </style>
+  </head>
+  <body class="ts-skin-dark ts-page-partner ts-page-driver">
+    <header class="ts-topnav" role="navigation">
+      <a class="ts-brand" href="/">
+        <span class="ts-brand-mark" aria-hidden="true">G</span>
+        <span data-i18n="nav.brand">arden</span>
+      </a>
+      <nav class="ts-nav">
+        <a href="/account" data-i18n="auth.navAccount">Account</a>
+        <a href="/shop" data-i18n="account.navShop">Shop</a>
+        <select id="langSelect" class="ts-lang-select" aria-label="Language">
+          <option value="sw">Kiswahili</option>
+          <option value="en">English</option>
+        </select>
+        <label class="muted" style="font-size:0.78rem">Driver</label>
+        <select id="driverId" class="ts-lang-select">
+          <option value="d1">d1 (demo)</option>
+          <option value="d2">d2</option>
+        </select>
+        <label class="row" style="cursor: pointer; font-size: 0.85rem">
+          <input type="checkbox" id="online" />
+          <span>Online</span>
+        </label>
+      </nav>
+    </header>
+    <div class="ts-partner-head" style="padding: 0 1rem; margin-top: 0.5rem">
+      <h1 data-i18n="driver.title" style="margin: 0; font-size: 1.1rem">Driver — delivery</h1>
+    </div>
+    <div id="map"></div>
+    <div class="panel muted" id="statusLine" data-i18n="driver.allowLocation">Set Online and allow location so your truck appears on the map.</div>
+    <div class="panel" id="routePanel">
+      <strong data-i18n="driver.routeTitle">Route order (GPS)</strong>
+      <p class="muted" style="margin: 4px 0 8px; font-size: 0.82rem">
+        Stops are numbered from your truck position — nearest pickups first when you have no active delivery.
+      </p>
+      <div id="routeStops" class="muted" style="font-size: 0.88rem" data-i18n="driver.allowLocation">Set Online and allow location so your truck appears on the map.</div>
+    </div>
+    <div class="panel" id="jobPanel">
+      <strong>Active delivery</strong>
+      <div id="jobBody" class="muted" style="margin-top: 8px">None</div>
+      <div class="row" style="margin-top: 10px" id="jobActions"></div>
+    </div>
+    <div class="panel">
+      <strong>Earnings</strong>
+      <div id="earnSummary" class="muted" style="margin-top: 8px"></div>
+      <div class="chart" id="earnChart"></div>
+      <details style="margin-top: 10px">
+        <summary style="cursor: pointer; font-weight: 500">Trip history</summary>
+        <div id="trips" class="ts-stack" style="margin-top: 8px"></div>
+      </details>
+    </div>
+    <div class="panel">
+      <strong>Payout (M-Pesa / mobile money)</strong>
+      <div class="row" style="margin-top: 8px">
+        <input id="poAmt" type="number" placeholder="Amount TZS" style="max-width: 140px" />
+        <input id="poDest" type="text" placeholder="Phone / till" style="flex: 1; min-width: 140px" />
+        <button type="button" class="ghost" id="btnPo">Request</button>
+      </div>
+      <div id="poOut" class="muted" style="font-size: 0.8rem; margin: 6px 0 0" role="status" aria-live="polite"></div>
+    </div>
+    <div class="panel">
+      <strong>Performance</strong>
+      <div id="perf" style="margin: 8px 0 0; color: #cbd5e1"></div>
+      <p class="muted" style="margin: 0.5rem 0 0; font-size: 0.82rem">
+        Offers weigh rating, acceptance rate, on-time %, and distance to the pickup. Tune dispatch in
+        <span class="ts-mono" style="font-size:0.75rem">driverPriorityScore</span> (server).
+      </p>
+    </div>
+
+    <div class="modal-bg" id="offerModal">
+      <div class="modal">
+        <h2 style="margin: 0 0 8px; font-size: 1.1rem">New delivery request</h2>
+        <p class="muted" style="margin-top: 0">Auto-declines in <span class="big" id="offerSec">30</span> s</p>
+        <div id="offerBody" class="muted" style="font-size: 0.9rem; line-height: 1.5"></div>
+        <div class="row" style="margin-top: 14px">
+          <button type="button" class="primary" id="btnAccept">Accept</button>
+          <button type="button" class="ghost" id="btnDecline">Decline</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/assets/i18n.js"></script>
+    <script src="/assets/tzshop.js"></script>
+    <script>
+      const OFFER_TTL = 30;
+      const $ = (id) => document.getElementById(id);
+      const t = (k, p) => window.TZShop.t(k, p);
+      window.TZShop.initLang();
+      $("langSelect") &&
+        (($("langSelect").value = window.TZShop.getLang()),
+        $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value)));
+      const api = (path, opt = {}) => window.TZShop.apiFetch(path, opt);
+      async function ensureAuth() {
+        const r = await api("/api/auth/me");
+        if (!r.ok) {
+          location.replace("/shop?auth=signin&next=" + encodeURIComponent("/driver"));
+          return false;
+        }
+        const j = await r.json();
+        if (!window.TZShop.canAccessDriver(j.user)) {
+          window.TZShop.showToast(t("access.needDriver"), "err");
+          location.replace("/account#driver");
+          return false;
+        }
+        if (j.user.driver_id) $("driverId").value = j.user.driver_id;
+        return true;
+      }
+
+      let map,
+        driverMarker,
+        routeLayer = null;
+      let routeStopMarkers = [];
+      let lastRouteStops = [];
+      let lastRouteData = null;
+      let soundedOfferJob = null;
+      let modalJobId = null;
+      let offerTimer = null;
+      let watchId = null;
+      let locInterval = null;
+
+      function playAlert() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.frequency.value = 660;
+          g.gain.setValueAtTime(0.15, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 0.25);
+          setTimeout(() => ctx.close(), 400);
+        } catch (_) {}
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+      }
+
+      function did() {
+        return $("driverId").value;
+      }
+
+      async function patchDriver(body) {
+        return api(`/api/drivers/${did()}`, { method: "PATCH", body: JSON.stringify(body) });
+      }
+
+      function initMap() {
+        map = L.map("map", { zoomControl: true }).setView([-6.79, 39.21], 12);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(map);
+        driverMarker = L.marker([-6.79, 39.21], {
+          icon: L.divIcon({
+            className: "",
+            html: '<div class="map-pin-truck" title="Your truck">🚚</div>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          }),
+          zIndexOffset: 1000,
+        }).addTo(map);
+      }
+
+      function clearRouteMarkers() {
+        for (const m of routeStopMarkers) map.removeLayer(m);
+        routeStopMarkers = [];
+      }
+
+      function stopPinIcon(seq, current) {
+        return L.divIcon({
+          className: "",
+          html: `<div class="map-pin-num${current ? " map-pin-num--current" : ""}">${seq}</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+      }
+
+      function legLabel(leg) {
+        return leg === "pickup" ? t("driver.pickup") : t("driver.dropoff");
+      }
+
+      function routeEmptyMessage(hint) {
+        if (hint === "offline") return t("driver.routeOffline");
+        if (hint === "on_delivery") return t("driver.routeOnDelivery");
+        return t("driver.routeEmpty");
+      }
+
+      function renderRouteQueue(data) {
+        if (!data || !$("routeStops")) return;
+        clearRouteMarkers();
+        const stops = data.stops || [];
+        const upcoming = data.upcoming || [];
+        if (!stops.length && !upcoming.length) {
+          $("routeStops").innerHTML = `<p class="muted" style="margin:0">${routeEmptyMessage(data.hint)}</p>`;
+          setRoute(null);
+          return;
+        }
+        let html = "";
+        for (const s of stops) {
+          const cur = s.status === "current";
+          html += `<div class="route-stop">
+            <span class="route-num${cur ? " route-num--current" : s.status === "pending" ? " route-num--pending" : ""}">${s.seq}</span>
+            <div>
+              <div><strong>${legLabel(s.leg)}</strong>${cur ? ` <span style="color:#f97316">${t("driver.now")}</span>` : ""}</div>
+              <div>${TZShop.esc(s.label)}</div>
+              <div class="muted" style="font-size:0.8rem">${t("driver.order")} ${TZShop.esc(s.order_id || "—")} · ${s.distance_km ?? "?"} km${s.eta_min != null ? ` · ~${s.eta_min} min` : ""}</div>
+            </div>
+          </div>`;
+          if (map) {
+            routeStopMarkers.push(
+              L.marker([s.lat, s.lng], { icon: stopPinIcon(s.seq, cur), title: s.label }).addTo(map)
+            );
+          }
+        }
+        if (upcoming.length) {
+          html += `<p style="margin:12px 0 6px;font-weight:600;font-size:0.85rem;color:#cbd5e1">${t("driver.routeNearby")}</p>`;
+          for (const u of upcoming) {
+            html += `<div class="route-stop">
+              <span class="route-num route-num--queue">${u.queue_position}</span>
+              <div>
+                <div><strong>${t("driver.pickup")}</strong> · ${TZShop.esc(u.pickup_label)}</div>
+                <div class="muted" style="font-size:0.8rem">${TZShop.esc(u.customer_name || "")} · ${TZShop.esc(u.dropoff_label || "")}</div>
+                <div class="muted" style="font-size:0.75rem">${u.distance_to_pickup_km} km · ~${u.eta_to_pickup_min} min · ${(u.earnings_tzs || 0).toLocaleString()} TZS</div>
+              </div>
+            </div>`;
+            if (map && u.pickup) {
+              routeStopMarkers.push(
+                L.marker([u.pickup.lat, u.pickup.lng], {
+                  icon: stopPinIcon(u.queue_position, false),
+                  title: u.pickup_label,
+                }).addTo(map)
+              );
+            }
+          }
+        }
+        $("routeStops").innerHTML = html;
+        lastRouteStops = stops;
+        lastRouteData = data;
+        drawRouteForStops(stops);
+      }
+
+      async function drawRouteForStops(stops) {
+        if (!driverMarker || !stops.length) {
+          setRoute(null);
+          return;
+        }
+        const d = driverMarker.getLatLng();
+        const points = [{ lat: d.lat, lng: d.lng }, ...stops.map((s) => ({ lat: s.lat, lng: s.lng }))];
+        if (points.length < 2) {
+          setRoute(null);
+          return;
+        }
+        const coordStr = points.map((p) => `${p.lng},${p.lat}`).join(";");
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+          const r = await fetch(url);
+          if (!r.ok) throw new Error("routing failed");
+          const j = await r.json();
+          setRoute(j.routes?.[0]?.geometry || null);
+        } catch {
+          setRoute(null);
+        }
+      }
+
+      function setRoute(geojson) {
+        if (routeLayer) map.removeLayer(routeLayer);
+        if (!geojson) return;
+        routeLayer = L.geoJSON(geojson, { style: { color: "#22d3ee", weight: 5 } }).addTo(map);
+        try {
+          map.fitBounds(routeLayer.getBounds(), { padding: [24, 24] });
+        } catch (_) {}
+      }
+
+      async function osrmRoute(lat1, lng1, lat2, lng2) {
+        const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error("routing failed");
+        const j = await r.json();
+        return j.routes?.[0]?.geometry || null;
+      }
+
+      async function refreshMapRoute(active) {
+        if (!active || !active.job || !driverMarker) return;
+        const d = driverMarker.getLatLng();
+        const t = active.target;
+        try {
+          const g = await osrmRoute(d.lat, d.lng, t.lat, t.lng);
+          setRoute(g);
+        } catch {
+          setRoute(null);
+        }
+      }
+
+      async function bindDriverSession() {
+        const r = await api("/api/auth/me");
+        if (!r.ok) return;
+        const j = await r.json();
+        if (j.user?.driver_id && $("driverId").querySelector(`option[value="${j.user.driver_id}"]`)) {
+          $("driverId").value = j.user.driver_id;
+        }
+        if (j.user?.role === "driver") {
+          $("driverId").disabled = true;
+        }
+      }
+
+      async function poll() {
+        const on = $("online").checked;
+        if (!on) {
+          $("statusLine").textContent = t("driver.offlineHint");
+          $("offerModal").classList.remove("show");
+          $("routeStops").innerHTML = `<p class="muted" style="margin:0">${t("driver.routeOffline")}</p>`;
+          clearRouteMarkers();
+          setRoute(null);
+        } else {
+          const { offer } = await (await api(`/api/drivers/${did()}/offer`)).json();
+          if (offer) {
+            if (offer.job_id !== soundedOfferJob) {
+              soundedOfferJob = offer.job_id;
+              playAlert();
+            }
+            showOffer(offer);
+          } else {
+            soundedOfferJob = null;
+            modalJobId = null;
+            if ($("offerModal").classList.contains("show")) {
+              clearInterval(offerTimer);
+              $("offerModal").classList.remove("show");
+            }
+          }
+
+          const aj = await (await api(`/api/drivers/${did()}/job`)).json();
+          const active = aj.active;
+          if (active && active.job) {
+          const o = active.order;
+          const phase = active.phase === "to_shop" ? t("driver.stepPickup") : t("driver.stepDropoff");
+          const shopTel = active.shop_phone || "";
+          const custTel = o?.customer_phone || "";
+          $("jobBody").innerHTML = `
+            <div><strong>${phase}</strong></div>
+            <div>Order <span class="ts-mono" style="color:#7dd3fc">${o?.id || "—"}</span> · ${o?.customer_name || ""}</div>
+            <div>${TZShop.esc(o?.customer_city || "")}${o?.delivery_area ? ` · ${TZShop.esc(o.delivery_area)}` : ""}</div>
+            <div><strong>${t("driver.deliveryAddress")}:</strong> ${TZShop.esc(o?.dropoff_label || active.job?.dropoff?.label || "—")}</div>
+            <div>Fee: <strong>${active.job.earnings_tzs?.toLocaleString()} TZS</strong></div>
+            <div>~${active.distance_to_target_km ?? "?"} km to ${active.phase === "to_shop" ? "pickup" : "drop-off"}</div>
+            <div class="row" style="margin-top:8px">
+              <a href="tel:${shopTel}"><button type="button" class="ghost">${t("driver.callShop")}</button></a>
+              <a href="tel:${custTel}"><button type="button" class="ghost">${t("driver.callCustomer")}</button></a>
+            </div>
+            <div class="muted" style="margin-top:6px">Customer OTP (show to customer at door): <strong style="color:#fbbf24">${active.delivery_otp || "—"}</strong></div>
+          `;
+          const ja = $("jobActions");
+          ja.innerHTML = "";
+          if (active.job.status === "active_pickup") {
+            const b = document.createElement("button");
+            b.className = "primary";
+            b.textContent = t("driver.confirmPickup");
+            b.onclick = () => confirmPickup(active.job.id);
+            ja.appendChild(b);
+          } else if (active.job.status === "active_delivery") {
+            const b1 = document.createElement("button");
+            b1.className = "primary";
+            b1.textContent = t("driver.confirmOtp");
+            b1.onclick = () => confirmDel(active.job.id, "otp");
+            const b2 = document.createElement("button");
+            b2.className = "ghost";
+            b2.textContent = t("driver.confirmPhoto");
+            b2.onclick = () => confirmDel(active.job.id, "photo");
+            ja.appendChild(b1);
+            ja.appendChild(b2);
+          }
+        } else {
+          $("jobBody").textContent = t("driver.activeNone");
+          $("jobActions").innerHTML = "";
+        }
+
+        try {
+          const route = await (await api(`/api/drivers/${did()}/route`)).json();
+          renderRouteQueue(route);
+        } catch (_) {
+          renderRouteQueue({ stops: [], upcoming: [], hint: "waiting_for_orders" });
+        }
+
+        $("statusLine").textContent = t("driver.onlineHint");
+        }
+
+        const e = await (await api(`/api/drivers/${did()}/earnings`)).json();
+        $("earnSummary").innerHTML = `Today: <strong>${e.today_earnings_tzs?.toLocaleString()} TZS</strong> · ${e.deliveries_completed_today} trips · Available <strong>${e.available_balance_tzs?.toLocaleString()} TZS</strong>`;
+        const max = Math.max(1, ...e.weekly.map((x) => x.total_tzs));
+        $("earnChart").innerHTML = e.weekly
+          .map((x) => {
+            const h = Math.round((x.total_tzs / max) * 100);
+            return `<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><small>${x.label}<br />${(x.total_tzs / 1000).toFixed(0)}k</small></div>`;
+          })
+          .join("");
+
+        const h = await (await api(`/api/drivers/${did()}/history`)).json();
+        const tripRows = h.trips?.slice(0, 40) || [];
+        $("trips").innerHTML = tripRows.length
+          ? tripRows
+              .map(
+                (trip) => `<div class="ts-stack__row">
+            <span class="ts-mono" style="font-size:0.75rem;color:#7dd3fc">${TZShop.esc(trip.order_id || "—")}</span>
+            <span><strong>${TZShop.moneyTzs(trip.amount_tzs)}</strong></span>
+            <span class="muted" style="font-size:0.7rem;max-width:7rem;text-align:right">${new Date(
+              trip.created_at
+            ).toLocaleString()}</span>
+          </div>`
+              )
+              .join("")
+          : '<p class="muted" style="margin:0.25rem 0 0">No completed trips in this session yet.</p>';
+
+        const p = await (await api(`/api/drivers/${did()}/performance`)).json();
+        if (!p) {
+          $("perf").textContent = "—";
+        } else {
+          $("perf").innerHTML = `<dl class="ts-kv" style="margin:0;grid-template-columns:10rem 1fr">
+            <dt>Rating</dt><dd>${TZShop.esc(String(p.rating_avg ?? "—"))} <span class="muted">(${(p.rating_count ?? 0) || 0} reviews)</span></dd>
+            <dt>Acceptance</dt><dd>${(p.acceptance_rate * 100).toFixed(1)}%</dd>
+            <dt>On-time</dt><dd>${(p.on_time_delivery_pct * 100).toFixed(1)}%</dd>
+            <dt>Deliveries</dt><dd>${p.deliveries_completed ?? 0}</dd>
+            <dt>Driver</dt><dd class="ts-mono">${TZShop.esc(p.name || p.driver_id)}</dd>
+          </dl>
+          <p class="muted" style="margin:0.6rem 0 0;font-size:0.75rem;">${TZShop.esc(p.priority_score_hint || "")}</p>`;
+        }
+      }
+
+      function showOffer(offer) {
+        $("offerModal").classList.add("show");
+        if (modalJobId !== offer.job_id) {
+          modalJobId = offer.job_id;
+        }
+        $("offerBody").innerHTML = `
+          <div><strong>Pickup:</strong> ${offer.pickup?.label || "Shop"}</div>
+          <div><strong>Drop-off:</strong> ${offer.dropoff?.label || "Customer"}</div>
+          <div>Shop→customer: <strong>${offer.distance_shop_customer_km} km</strong> · ~${offer.eta_shop_to_customer_min} min ride</div>
+          <div>You are <strong>${offer.distance_to_pickup_km} km</strong> from pickup (~${offer.eta_to_pickup_min} min)</div>
+          <div>Earnings: <strong style="color:#4ade80">${offer.earnings_tzs?.toLocaleString()} TZS</strong></div>
+        `;
+        let left = offer.seconds_left ?? OFFER_TTL;
+        $("offerSec").textContent = left;
+        clearInterval(offerTimer);
+        offerTimer = setInterval(() => {
+          left -= 1;
+          $("offerSec").textContent = Math.max(0, left);
+          if (left <= 0) clearInterval(offerTimer);
+        }, 1000);
+        $("btnAccept").onclick = async () => {
+          await api(`/api/drivers/${did()}/offer/respond`, { method: "POST", body: JSON.stringify({ accept: true }) });
+          $("offerModal").classList.remove("show");
+          clearInterval(offerTimer);
+          soundedOfferJob = null;
+          modalJobId = null;
+          poll();
+        };
+        $("btnDecline").onclick = async () => {
+          await api(`/api/drivers/${did()}/offer/respond`, { method: "POST", body: JSON.stringify({ accept: false }) });
+          $("offerModal").classList.remove("show");
+          clearInterval(offerTimer);
+          soundedOfferJob = null;
+          modalJobId = null;
+          poll();
+        };
+      }
+
+      async function confirmPickup(jobId) {
+        const r = await api(`/api/drivers/${did()}/jobs/${jobId}/confirm-pickup`, { method: "POST", body: "{}" });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error || "failed");
+        poll();
+      }
+
+      async function confirmDel(jobId, mode) {
+        let body = { proof_type: mode };
+        if (mode === "otp") {
+          const otp = prompt("Enter customer OTP from their order screen:");
+          if (!otp) return;
+          body.otp = otp.trim();
+        } else {
+          const f = await new Promise((resolve) => {
+            const inp = document.createElement("input");
+            inp.type = "file";
+            inp.accept = "image/*";
+            inp.onchange = () => resolve(inp.files[0] || null);
+            inp.click();
+          });
+          if (!f) return;
+          body.photo_data_url = await new Promise((ok, err) => {
+            const fr = new FileReader();
+            fr.onload = () => ok(fr.result);
+            fr.onerror = err;
+            fr.readAsDataURL(f);
+          });
+        }
+        const r = await api(`/api/drivers/${did()}/jobs/${jobId}/confirm-delivery`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        const j = await r.json();
+        if (!r.ok) return alert(j.error || "failed");
+        alert("Delivery completed" + (j.on_time ? " (on time)" : ""));
+        poll();
+      }
+
+      $("online").addEventListener("change", async () => {
+        const on = $("online").checked;
+        const ll = driverMarker.getLatLng();
+        await patchDriver({ online: on, lat: ll.lat, lng: ll.lng });
+        poll();
+      });
+
+      $("driverId").addEventListener("change", () => {
+        soundedOfferJob = null;
+        modalJobId = null;
+        $("online").checked = false;
+        patchDriver({ online: false });
+        poll();
+      });
+
+      function startLocation() {
+        if (!navigator.geolocation) return;
+        watchId = navigator.geolocation.watchPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            driverMarker.setLatLng([lat, lng]);
+            if ($("online").checked) {
+              await patchDriver({ online: true, lat, lng });
+            }
+            map.panTo([lat, lng]);
+            if ($("online").checked && lastRouteStops.length) {
+              drawRouteForStops(lastRouteStops);
+            }
+          },
+          () => {
+            $("statusLine").textContent = t("driver.locationDenied");
+          },
+          { enableHighAccuracy: true, maximumAge: 5000 }
+        );
+      }
+
+      $("btnPo").addEventListener("click", async () => {
+        const body = {
+          amount_tzs: Number($("poAmt").value),
+          method: "mpesa",
+          destination: $("poDest").value,
+        };
+        const r = await api(`/api/drivers/${did()}/payouts`, { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json();
+        $("poOut").innerHTML = r.ok
+          ? `<div class="ts-result ts-result--ok" style="background:#022c22;border-color:#0f766e">
+              <p style="margin:0"><strong>Payout recorded</strong>${j.amount_tzs != null ? ` — ${TZShop.moneyTzs(j.amount_tzs)}` : ""}</p>
+              <details class="ts-details" style="margin-top:0.4rem"><summary>Technical</summary><pre style="margin:0.4rem 0 0;max-height:100px;overflow:auto;font-size:0.7rem;">${TZShop.prettyJson(
+                j
+              )}</pre></details>
+            </div>`
+          : `<div class="ts-result ts-result--err">${TZShop.esc(String(j.error || r.statusText))}</div>`;
+        if (!r.ok) alert(j.error || "failed");
+        else TZShop.showToast(t("driver.payoutOk"), "ok");
+        poll();
+      });
+
+      window.TZShop.onLangChange(() => {
+        window.TZShop.applyDataI18n();
+        if (lastRouteData) renderRouteQueue(lastRouteData);
+      });
+
+      ensureAuth().then(async (ok) => {
+        if (!ok) return;
+        await bindDriverSession();
+        initMap();
+        startLocation();
+        setInterval(poll, 2500);
+        poll();
+      });
+    </script>
+  </body>
+</html>

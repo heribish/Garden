@@ -18,7 +18,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Creating private repo $owner/$repo (skips if it already exists)..."
 gh repo view "$owner/$repo" 2>$null
 if ($LASTEXITCODE -ne 0) {
-  gh repo create $repo --private --description "Tanzania marketplace — groceries, vendors, and drivers" --confirm
+  gh repo create $repo --private --description "Tanzania marketplace - groceries, vendors, and drivers" --confirm
 }
 
 $remote = git remote get-url origin 2>$null
@@ -30,4 +30,4 @@ git branch -M main
 Write-Host "Pushing to origin main..."
 git push -u origin main
 
-Write-Host "Done. Repo: https://github.com/$owner/$repo"
+Write-Host ("Done. Repo: https://github.com/" + $owner + "/" + $repo)

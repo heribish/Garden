@@ -15,19 +15,30 @@
     <link rel="stylesheet" href="/assets/tzshop.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
+      /* Cohesive emerald/teal dashboard theme (single accent) */
+      .ts-skin-dark {
+        --tz-page-bg: #07211d;
+        --tz-elev: #0e2e29;
+        --tz-elev-2: #0a2622;
+        --tz-border: #1d4d45;
+        --tz-text: #e6f5f1;
+        --tz-muted: #8fbdb4;
+        --tz-link: #5eead4;
+        --tz-accent: #14b8a6;
+        --tz-accent-2: #0d9488;
+        --tz-input-bg: #0a2622;
+      }
       :root {
         font-family: var(--tz-font, "Plus Jakarta Sans", system-ui, sans-serif);
-        background: #0f172a;
-        color: #e2e8f0;
+        background: #07211d;
+        color: #e6f5f1;
       }
       body {
         margin: 0;
-        padding: 16px;
-        max-width: 1200px;
-        margin-inline: auto;
+        background: #07211d;
       }
       a {
-        color: #7dd3fc;
+        color: #5eead4;
       }
       h1 {
         font-size: 1.2rem;
@@ -40,25 +51,34 @@
         margin: 12px 0;
       }
       .tabs button {
-        padding: 8px 12px;
+        padding: 8px 14px;
         border-radius: 999px;
-        border: 1px solid #334155;
-        background: #1e293b;
-        color: #e2e8f0;
+        border: 1px solid #1d4d45;
+        background: #0e2e29;
+        color: #cdeae3;
         cursor: pointer;
         font: inherit;
+        font-weight: 600;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .tabs button:hover {
+        color: #fff;
+        border-color: #2dd4bf;
       }
       .tabs button.on {
-        background: #2563eb;
-        border-color: #3b82f6;
+        background: linear-gradient(180deg, #14b8a6, #0f766e);
+        border-color: #2dd4bf;
+        color: #fff;
+        box-shadow: 0 6px 16px -8px rgba(20, 184, 166, 0.9);
       }
       section.panel {
         display: none;
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 12px;
-        padding: 14px;
+        background: #0e2e29;
+        border: 1px solid #1d4d45;
+        border-radius: 14px;
+        padding: 16px;
         margin-bottom: 14px;
+        box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.8);
       }
       section.panel.active {
         display: block;
@@ -69,63 +89,109 @@
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       }
       .card {
-        background: #0f172a;
-        border-radius: 10px;
-        padding: 10px;
-        border: 1px solid #334155;
+        background: #0a2622;
+        border-radius: 12px;
+        padding: 12px;
+        border: 1px solid #1d4d45;
+      }
+      .card b {
+        color: #5eead4;
       }
       .card b {
         font-size: 1.2rem;
       }
       .red {
         color: #fecaca;
-        background: #450a0a;
+        background: rgba(127, 29, 29, 0.55);
+        border: 1px solid rgba(248, 113, 113, 0.35);
         padding: 8px 10px;
         border-radius: 8px;
         margin: 6px 0;
       }
       #amap {
         height: 420px;
-        border-radius: 10px;
+        border-radius: 12px;
+        border: 1px solid #1d4d45;
       }
       table {
         width: 100%;
         border-collapse: collapse;
         font-size: 0.82rem;
       }
+      th {
+        color: #8fbdb4;
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
       th,
       td {
-        border-bottom: 1px solid #334155;
-        padding: 6px 4px;
+        border-bottom: 1px solid #1d4d45;
+        padding: 8px 6px;
         text-align: left;
         vertical-align: top;
       }
       input,
       select,
+      textarea,
       button {
         font: inherit;
-        padding: 6px 8px;
-        border-radius: 6px;
-        border: 1px solid #475569;
-        background: #0f172a;
-        color: #e2e8f0;
+        padding: 7px 10px;
+        border-radius: 8px;
+        border: 1px solid #2a6157;
+        background: #0a2622;
+        color: #e6f5f1;
+      }
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #2dd4bf;
+        box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.18);
       }
       button.primary {
-        background: #2563eb;
-        border-color: #3b82f6;
+        background: linear-gradient(180deg, #14b8a6, #0f766e);
+        border-color: #2dd4bf;
+        color: #fff;
+        font-weight: 600;
         cursor: pointer;
       }
+      button.primary:hover {
+        filter: brightness(1.08);
+      }
       button.small {
-        padding: 4px 8px;
+        padding: 5px 10px;
         font-size: 0.8rem;
         cursor: pointer;
       }
+      button.small:hover {
+        border-color: #2dd4bf;
+        color: #fff;
+      }
       .muted {
-        color: #94a3b8;
+        color: #8fbdb4;
         font-size: 0.88rem;
       }
+      .ts-tabbadge {
+        display: none;
+        margin-left: 6px;
+        min-width: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 800;
+        line-height: 18px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .ts-tabbadge.on {
+        display: inline-block;
+      }
       pre {
-        background: #020617;
+        background: #06201c;
+        border: 1px solid #1d4d45;
         padding: 10px;
         border-radius: 8px;
         overflow: auto;
@@ -135,24 +201,36 @@
     </style>
   </head>
   <body class="ts-skin-dark">
-    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
-      <div>
-        <h1 data-i18n="admin.title" style="margin:0 0 8px">Operations admin</h1>
-        <p class="muted" style="margin:0">
-          <a href="/shop">Shop</a> · <a href="/vendor">Vendor</a> · <a href="/driver">Driver</a>
-        </p>
+    <section class="ts-app-hero">
+      <div class="ts-app-hero__inner">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between">
+          <div>
+            <p class="ts-app-hero__eyebrow">Operations control</p>
+            <h1 data-i18n="admin.title">Operations admin</h1>
+            <p>Full control of the marketplace — vendors, drivers, products, support and finance in one place.</p>
+            <div class="ts-app-hero__row">
+              <a class="btn btn--ghost btn--sm" href="/shop">Shop</a>
+              <a class="btn btn--ghost btn--sm" href="/vendor">Vendor</a>
+              <a class="btn btn--ghost btn--sm" href="/driver">Driver</a>
+            </div>
+          </div>
+          <select id="langSelect" aria-label="Language" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.12);color:#fff;font-size:0.82rem">
+            <option value="sw">Kiswahili</option>
+            <option value="en">English</option>
+          </select>
+        </div>
       </div>
-      <select id="langSelect" aria-label="Language" style="padding:4px 8px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:0.8rem">
-        <option value="sw">Kiswahili</option>
-        <option value="en">English</option>
-      </select>
-    </div>
+    </section>
+
+    <div class="ts-app-wrap">
     <div class="tabs" id="tabs">
       <button type="button" data-tab="overview" class="on">Overview</button>
       <button type="button" data-tab="map">Live map</button>
       <button type="button" data-tab="orders">Orders</button>
       <button type="button" data-tab="drivers">Drivers</button>
       <button type="button" data-tab="vendors">Vendors</button>
+      <button type="button" data-tab="catalogue">Vendor products</button>
+      <button type="button" data-tab="support">Support<span class="ts-tabbadge" id="supTabBadge"></span></button>
       <button type="button" data-tab="apps">Applications</button>
       <button type="button" data-tab="finance">Finance</button>
       <button type="button" data-tab="refunds">Refunds</button>
@@ -239,6 +317,56 @@
       </table>
     </section>
 
+    <section class="panel" id="panel-catalogue">
+      <p class="muted" style="margin-top:0">
+        Manage products on behalf of any vendor — add photos, descriptions, stock, and bulk pricing. Vendors with little tech experience rely on you here.
+      </p>
+      <div class="grid" style="grid-template-columns:minmax(220px,1fr) auto;align-items:end;margin-bottom:14px">
+        <div>
+          <label class="muted" for="acVendor">Vendor</label>
+          <select id="acVendor"></select>
+        </div>
+        <button type="button" class="primary small" id="acNew">+ New product</button>
+      </div>
+
+      <div id="acEditor" style="display:none;background:#0a2622;border:1px solid #1d4d45;border-radius:12px;padding:14px;margin-bottom:14px">
+        <h3 style="margin:0 0 10px;font-size:0.95rem" id="acEditorTitle">New product</h3>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+          <div><label class="muted">Name</label><input id="acName" placeholder="e.g. Maize flour 2kg" /></div>
+          <div><label class="muted">Brand</label><input id="acBrand" placeholder="e.g. Azam" /></div>
+          <div><label class="muted">Price (TZS)</label><input id="acPrice" type="number" placeholder="12000" /></div>
+          <div><label class="muted">Unit</label><input id="acUnit" placeholder="piece / kg / carton" /></div>
+          <div><label class="muted">Size(s)</label><input id="acSize" placeholder="S, M, L or 41, 42" /></div>
+          <div><label class="muted">Stock qty</label><input id="acStock" type="number" placeholder="20" /></div>
+          <div><label class="muted">Category</label><select id="acCat"></select></div>
+        </div>
+        <div style="margin-top:10px"><label class="muted">Description</label><textarea id="acDesc" rows="2" style="width:100%;background:#0a2622;border:1px solid #2a6157;border-radius:6px;color:#e6f5f1;padding:6px 8px;font:inherit"></textarea></div>
+        <div style="margin-top:10px;border:1px dashed #1d4d45;border-radius:10px;padding:10px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="acWholesale" style="width:auto" /> Offer wholesale / bulk price</label>
+          <div class="grid" id="acWholesaleFields" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-top:8px;display:none">
+            <div><label class="muted">Bulk price / unit</label><input id="acWPrice" type="number" placeholder="10500" /></div>
+            <div><label class="muted">Min qty for bulk</label><input id="acWMin" type="number" placeholder="12" /></div>
+          </div>
+        </div>
+        <div style="margin-top:10px"><label class="muted">Photo</label><input type="file" id="acPhoto" accept="image/*" /><div id="acPhotoPrev" style="margin-top:6px"></div></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button type="button" class="primary small" id="acSave">Save product</button>
+          <button type="button" class="small" id="acCancel">Cancel</button>
+        </div>
+      </div>
+
+      <div class="ts-catalogue-grid" id="acGrid"></div>
+    </section>
+
+    <section class="panel" id="panel-support">
+      <div class="ts-inbox">
+        <div class="ts-inbox__list" id="supList"></div>
+        <div class="ts-inbox__thread" id="supThread">
+          <p class="muted" style="padding:1rem">Select a conversation to view messages.</p>
+        </div>
+      </div>
+    </section>
+
     <section class="panel" id="panel-apps">
       <h3 style="margin: 0 0 0.75rem; font-size: 1rem">Vendor applications</h3>
       <div id="appList"></div>
@@ -248,7 +376,23 @@
 
     <section class="panel" id="panel-finance">
       <div id="finSum"></div>
-      <h3 style="font-size: 0.95rem">Commission override (category)</h3>
+
+      <h3 style="font-size: 0.95rem">Request settlement from vendor (end of shift)</h3>
+      <p class="muted">Ask a vendor to pay the platform (e.g. commission collected in cash). They confirm it from their account.</p>
+      <div class="grid">
+        <select id="prVendor"></select>
+        <input id="prAmt" type="number" placeholder="amount TZS" />
+        <input id="prReason" placeholder="reason (e.g. Shift commission)" />
+        <select id="prDue">
+          <option value="End of shift">End of shift</option>
+          <option value="End of day">End of day</option>
+          <option value="Immediate">Immediate</option>
+        </select>
+        <button type="button" class="primary small" id="btnPR">Request payment</button>
+      </div>
+      <div id="prList" style="margin-top: 12px"></div>
+
+      <h3 style="font-size: 0.95rem; margin-top: 18px">Commission override (category)</h3>
       <div class="grid">
         <input id="comCat" placeholder="category_id e.g. c1" />
         <input id="comBps" type="number" placeholder="bps e.g. 900" />
@@ -279,6 +423,8 @@
       </div>
       <div id="rfList"></div>
     </section>
+
+    </div>
 
     <script src="/assets/i18n.js"></script>
     <script src="/assets/tzshop.js"></script>
@@ -520,7 +666,7 @@
         const j = await (await api("/api/admin/driver-applications")).json();
         $("drvAppList").innerHTML = (j.applications || [])
           .map(
-            (a) => `<div style="border-bottom:1px solid #334155;padding:8px 0">
+            (a) => `<div style="border-bottom:1px solid #1d4d45;padding:8px 0">
           <strong>${TZShop.esc(a.full_name)}</strong> · ${TZShop.esc(a.vehicle_type)} · ${TZShop.esc(a.vehicle_plate)} · ${a.status}<br />
           <span class="muted">Licence ${TZShop.esc(a.license_number)} · expires ${TZShop.esc(a.license_expiry)} · ${TZShop.esc(a.phone)}</span><br />
           ${
@@ -558,7 +704,7 @@
         const j = await (await api("/api/admin/applications")).json();
         $("appList").innerHTML = (j.applications || [])
           .map(
-            (a) => `<div style="border-bottom:1px solid #334155;padding:8px 0">
+            (a) => `<div style="border-bottom:1px solid #1d4d45;padding:8px 0">
           <strong>${a.business_name}</strong> · ${a.zone} · ${a.status}<br />
           <span class="muted">${a.contact_phone}</span><br />
           ${
@@ -615,7 +761,7 @@
         const j = await (await api("/api/admin/refunds")).json();
         $("rfList").innerHTML = (j.refunds || [])
           .map(
-            (r) => `<div style="border-bottom:1px solid #334155;padding:6px 0;font-size:0.85rem">
+            (r) => `<div style="border-bottom:1px solid #1d4d45;padding:6px 0;font-size:0.85rem">
           <code>${r.id}</code> · ${r.status} · ${r.amount_tzs?.toLocaleString()} TZS · order <code>${r.order_id}</code>
           ${
             r.status === "pending"
@@ -641,6 +787,59 @@
           })
         );
       }
+
+      async function populatePRVendors() {
+        const list = acVendors.length ? acVendors : ((await (await api("/api/admin/vendors")).json()).vendors || []);
+        $("prVendor").innerHTML = list.map((v) => `<option value="${v.id}">${TZShop.esc(v.name)} (${v.id})</option>`).join("");
+      }
+
+      async function loadPaymentRequests() {
+        const j = await (await api("/api/admin/payment-requests")).json();
+        const reqs = j.requests || [];
+        if (!reqs.length) {
+          $("prList").innerHTML = '<p class="muted">No settlement requests yet.</p>';
+          return;
+        }
+        $("prList").innerHTML = `<table>
+          <thead><tr><th>Vendor</th><th>Amount</th><th>Reason</th><th>Due</th><th>Status</th><th>Ref</th><th></th></tr></thead>
+          <tbody>${reqs
+            .map(
+              (r) => `<tr>
+                <td>${TZShop.esc(r.vendor_name)}</td>
+                <td>${Number(r.amount_tzs).toLocaleString()} TZS</td>
+                <td>${TZShop.esc(r.reason)}</td>
+                <td>${TZShop.esc(r.due_label)}</td>
+                <td>${TZShop.esc(r.status)}</td>
+                <td>${TZShop.esc(r.reference || "—")}</td>
+                <td>${r.status === "pending" ? `<button type="button" class="small" data-prcancel="${r.id}">Cancel</button>` : ""}</td>
+              </tr>`
+            )
+            .join("")}</tbody>
+        </table>`;
+        document.querySelectorAll("[data-prcancel]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            await api(`/api/admin/payment-requests/${b.dataset.prcancel}/cancel`, { method: "POST", body: "{}" });
+            loadPaymentRequests();
+          })
+        );
+      }
+
+      $("btnPR").addEventListener("click", async () => {
+        const vid = $("prVendor").value;
+        if (!vid) return window.TZShop.showToast("Pick a vendor", "err");
+        const body = {
+          amount_tzs: Number($("prAmt").value),
+          reason: $("prReason").value.trim() || "Shift settlement",
+          due_label: $("prDue").value,
+        };
+        const r = await api(`/api/admin/vendors/${vid}/payment-requests`, { method: "POST", body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) return window.TZShop.showToast(j.error || "Failed", "err");
+        window.TZShop.showToast("Payment requested from vendor", "ok");
+        $("prAmt").value = "";
+        $("prReason").value = "";
+        loadPaymentRequests();
+      });
 
       $("btnFOrd").addEventListener("click", loadOrders);
       $("btnCom").addEventListener("click", async () => {
@@ -684,9 +883,342 @@
         loadRefunds();
       });
 
+      /* ---------- Vendor product control (admin-on-behalf) ---------- */
+      let acVendors = [];
+      let acCats = [];
+      let acProducts = [];
+      let acEditId = null;
+      let acStagedImage = undefined;
+
+      function acFileToDataUrl(file, maxDim = 900, quality = 0.82) {
+        return new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              let { width, height } = img;
+              if (width > maxDim || height > maxDim) {
+                const s = maxDim / Math.max(width, height);
+                width = Math.round(width * s);
+                height = Math.round(height * s);
+              }
+              const c = document.createElement("canvas");
+              c.width = width;
+              c.height = height;
+              c.getContext("2d").drawImage(img, 0, 0, width, height);
+              resolve(c.toDataURL("image/jpeg", quality));
+            };
+            img.onerror = reject;
+            img.src = fr.result;
+          };
+          fr.onerror = reject;
+          fr.readAsDataURL(file);
+        });
+      }
+
+      async function loadCatalogueVendors() {
+        const j = await (await api("/api/admin/vendors")).json();
+        acVendors = j.vendors || [];
+        $("acVendor").innerHTML = acVendors.map((v) => `<option value="${v.id}">${TZShop.esc(v.name)} (${v.id})</option>`).join("");
+        if (acVendors.length) await loadVendorCatalogue();
+      }
+
+      async function loadVendorCatalogue() {
+        const vid = $("acVendor").value;
+        if (!vid) return;
+        const [pj, cj] = await Promise.all([
+          (await api(`/api/vendors/${vid}/products?include_inactive=1`)).json(),
+          (await api(`/api/vendors/${vid}/categories`)).json().catch(() => ({ categories: [] })),
+        ]);
+        acProducts = pj.products || [];
+        acCats = cj.categories || [];
+        $("acCat").innerHTML = '<option value="">— category —</option>' + acCats.map((c) => `<option value="${c.id}">${TZShop.esc(c.name)}</option>`).join("");
+        renderAdminCatalogue();
+      }
+
+      function renderAdminCatalogue() {
+        if (!acProducts.length) {
+          $("acGrid").innerHTML = '<p class="muted" style="grid-column:1/-1">No products yet for this vendor. Use “+ New product”.</p>';
+          return;
+        }
+        $("acGrid").innerHTML = acProducts
+          .map((p) => {
+            const out = p.stock_qty <= 0;
+            const art = p.image_url
+              ? `<img src="${TZShop.esc(p.image_url)}" alt="${TZShop.esc(p.name)}" />`
+              : TZShop.esc((p.name || "?").slice(0, 1).toUpperCase());
+            const stockTag = out
+              ? '<span class="ts-tag ts-tag--out">Out of stock</span>'
+              : `<span class="ts-tag ts-tag--stock">${p.stock_qty} in stock</span>`;
+            const bulk = p.wholesale_enabled && p.wholesale_price_tzs > 0;
+            const bulkTag = bulk ? `<span class="ts-tag ts-tag--bulk">Bulk ${Number(p.wholesale_price_tzs).toLocaleString()} ×${p.wholesale_min_qty}+</span>` : "";
+            const brand = p.brand ? `<span class="ts-tag ts-tag--brand">${TZShop.esc(p.brand)}</span>` : "";
+            const size = p.size ? `<span class="ts-tag ts-tag--size">${TZShop.esc(p.size)}</span>` : "";
+            return `<div class="ts-prod-card${p.active ? "" : " ts-prod-card--off"}">
+              <div class="ts-prod-card__art">${art}</div>
+              <div class="ts-prod-card__body">
+                <p class="ts-prod-card__name">${TZShop.esc(p.name)}${p.unit ? ` <span class="muted">/ ${TZShop.esc(p.unit)}</span>` : ""}</p>
+                <p class="ts-prod-card__meta"><strong>${Number(p.price_tzs).toLocaleString()} TZS</strong></p>
+                <div class="ts-product__tags" style="margin-top:0.35rem">${stockTag}${bulkTag}${brand}${size}</div>
+                <div class="ts-prod-card__row">
+                  <button type="button" class="small" data-acedit="${p.id}">Edit</button>
+                  <button type="button" class="small" data-actoggle="${p.id}">${p.active ? "Hide" : "Show"}</button>
+                </div>
+              </div>
+            </div>`;
+          })
+          .join("");
+        document.querySelectorAll("[data-acedit]").forEach((b) => b.addEventListener("click", () => acStartEdit(b.dataset.acedit)));
+        document.querySelectorAll("[data-actoggle]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            const p = acProducts.find((x) => x.id === b.dataset.actoggle);
+            await api(`/api/vendors/${$("acVendor").value}/products/${b.dataset.actoggle}`, {
+              method: "PATCH",
+              body: JSON.stringify({ active: !p.active }),
+            });
+            loadVendorCatalogue();
+          })
+        );
+      }
+
+      function acShowEditor(show) {
+        $("acEditor").style.display = show ? "block" : "none";
+      }
+      function acResetForm() {
+        acEditId = null;
+        acStagedImage = undefined;
+        ["acName", "acBrand", "acPrice", "acUnit", "acSize", "acStock", "acDesc", "acWPrice", "acWMin"].forEach((id) => ($(id).value = ""));
+        $("acCat").value = "";
+        $("acPhoto").value = "";
+        $("acPhotoPrev").innerHTML = "";
+        $("acWholesale").checked = false;
+        $("acWholesaleFields").style.display = "none";
+        $("acEditorTitle").textContent = "New product";
+      }
+      function acStartEdit(id) {
+        const p = acProducts.find((x) => x.id === id);
+        if (!p) return;
+        acResetForm();
+        acEditId = id;
+        $("acName").value = p.name || "";
+        $("acBrand").value = p.brand || "";
+        $("acPrice").value = p.price_tzs || "";
+        $("acUnit").value = p.unit || "";
+        $("acSize").value = p.size || "";
+        $("acStock").value = p.stock_qty ?? "";
+        $("acDesc").value = p.description || "";
+        $("acCat").value = p.category_id || "";
+        $("acWholesale").checked = Boolean(p.wholesale_enabled);
+        $("acWholesaleFields").style.display = p.wholesale_enabled ? "" : "none";
+        $("acWPrice").value = p.wholesale_price_tzs || "";
+        $("acWMin").value = p.wholesale_min_qty || "";
+        $("acPhotoPrev").innerHTML = p.image_url ? `<img src="${TZShop.esc(p.image_url)}" alt="" style="max-width:120px;border-radius:8px" />` : "";
+        $("acEditorTitle").textContent = "Edit: " + (p.name || "");
+        acShowEditor(true);
+        $("acEditor").scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      $("acVendor").addEventListener("change", () => {
+        acShowEditor(false);
+        loadVendorCatalogue();
+      });
+      $("acNew").addEventListener("click", () => {
+        acResetForm();
+        acShowEditor(true);
+      });
+      $("acCancel").addEventListener("click", () => acShowEditor(false));
+      $("acWholesale").addEventListener("change", () => {
+        $("acWholesaleFields").style.display = $("acWholesale").checked ? "" : "none";
+      });
+      $("acPhoto").addEventListener("change", async () => {
+        const f = $("acPhoto").files[0];
+        if (!f) return;
+        try {
+          acStagedImage = await acFileToDataUrl(f);
+          $("acPhotoPrev").innerHTML = `<img src="${acStagedImage}" alt="" style="max-width:120px;border-radius:8px" />`;
+        } catch (_) {
+          acStagedImage = undefined;
+        }
+      });
+      $("acSave").addEventListener("click", async () => {
+        const vid = $("acVendor").value;
+        if (!vid) return;
+        const ws = $("acWholesale").checked;
+        const body = {
+          name: $("acName").value,
+          brand: $("acBrand").value.trim() || null,
+          unit: $("acUnit").value.trim() || null,
+          size: $("acSize").value.trim() || null,
+          description: $("acDesc").value,
+          price_tzs: Number($("acPrice").value),
+          stock_qty: Number($("acStock").value),
+          category_id: $("acCat").value || null,
+          wholesale_enabled: ws,
+          wholesale_price_tzs: ws ? Number($("acWPrice").value) || 0 : 0,
+          wholesale_min_qty: ws ? Number($("acWMin").value) || 0 : 0,
+        };
+        if (acStagedImage !== undefined) body.image_url = acStagedImage;
+        const url = acEditId ? `/api/vendors/${vid}/products/${acEditId}` : `/api/vendors/${vid}/products`;
+        const r = await api(url, { method: acEditId ? "PATCH" : "POST", body: JSON.stringify(body) });
+        const j = await r.json();
+        if (!r.ok) return window.TZShop.showToast(j.error || "Failed", "err");
+        window.TZShop.showToast(acEditId ? "Product updated" : "Product added", "ok");
+        acShowEditor(false);
+        loadVendorCatalogue();
+      });
+
+      /* ---------- Support inbox ---------- */
+      let supConvos = [];
+      let supActiveId = null;
+      let supMsgFingerprint = "";
+      let supStatus = "open";
+
+      function setSupBadge(n) {
+        const b = $("supTabBadge");
+        if (!b) return;
+        if (n > 0) {
+          b.textContent = n > 9 ? "9+" : String(n);
+          b.classList.add("on");
+        } else {
+          b.classList.remove("on");
+        }
+      }
+
+      function supportMsgHtml(m, c) {
+        const role = m.sender_role === "user" ? "user" : m.sender_role === "system" ? "system" : "admin";
+        const when = m.created_at ? new Date(m.created_at).toLocaleString() : "";
+        const who = role === "user" ? TZShop.esc(c.user_name || "Customer") : TZShop.esc(m.sender_name || "Support");
+        const deleted = m.deleted_for_user ? ` <em style="opacity:0.7;font-size:0.72rem">(deleted by user)</em>` : "";
+        return `<div class="ts-support-msg ts-support-msg--${role}" data-mid="${TZShop.esc(m.id)}"><strong style="display:block;font-size:0.72rem;opacity:0.8">${who}${deleted}</strong>${TZShop.esc(m.body)}<time>${when}</time></div>`;
+      }
+
+      function messagesFingerprint(messages) {
+        return (messages || []).map((m) => `${m.id}:${m.deleted_for_user ? 1 : 0}`).join("|");
+      }
+
+      function bindSupportComposer(id) {
+        const sendBtn = $("supSend");
+        const reply = $("supReply");
+        const toggle = $("supToggleStatus");
+        if (sendBtn && !sendBtn.dataset.bound) {
+          sendBtn.dataset.bound = "1";
+          sendBtn.addEventListener("click", sendSupportReply);
+        }
+        if (reply && !reply.dataset.bound) {
+          reply.dataset.bound = "1";
+          reply.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendSupportReply();
+            }
+          });
+        }
+        if (toggle && !toggle.dataset.bound) {
+          toggle.dataset.bound = "1";
+          toggle.addEventListener("click", async () => {
+            const next = supStatus === "closed" ? "open" : "closed";
+            await api(`/api/admin/support/conversations/${id}/status`, {
+              method: "POST",
+              body: JSON.stringify({ status: next }),
+            });
+            await loadSupport();
+            await openConversation(id, { force: true });
+          });
+        }
+      }
+
+      async function loadSupport() {
+        const j = await (await api("/api/admin/support/conversations")).json();
+        supConvos = j.conversations || [];
+        setSupBadge(j.unread_total || 0);
+        $("supList").innerHTML = supConvos.length
+          ? supConvos
+              .map((c) => {
+                const unread = c.unread_for_admin > 0 ? `<span class="ts-inbox__unread">${c.unread_for_admin}</span>` : "";
+                return `<div class="ts-inbox__item${c.id === supActiveId ? " on" : ""}" data-sup="${c.id}">
+                  <div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:center">
+                    <strong>${TZShop.esc(c.user_name || "Customer")}</strong>${unread}
+                  </div>
+                  <p>${TZShop.esc(c.last_message_preview || "No messages yet")}</p>
+                  <p style="opacity:0.7">${c.status}${c.user_phone ? " · " + TZShop.esc(c.user_phone) : ""}</p>
+                </div>`;
+              })
+              .join("")
+          : '<p class="muted" style="padding:1rem">No support conversations yet.</p>';
+        document.querySelectorAll("[data-sup]").forEach((el) => el.addEventListener("click", () => openConversation(el.dataset.sup)));
+      }
+
+      async function openConversation(id, opts = {}) {
+        const force = Boolean(opts.force);
+        const switching = supActiveId !== id;
+        supActiveId = id;
+        document.querySelectorAll("[data-sup]").forEach((el) => el.classList.toggle("on", el.dataset.sup === id));
+        const j = await (await api(`/api/admin/support/conversations/${id}`)).json();
+        const c = j.conversation || {};
+        const messages = j.messages || [];
+        const fp = messagesFingerprint(messages);
+        supStatus = c.status || "open";
+
+        // Poll refresh: update messages only — never wipe the reply box mid-typing.
+        const shellReady = Boolean($("supReply") && $("supMessages") && !switching);
+        if (shellReady && !force) {
+          if (fp !== supMsgFingerprint) {
+            const msgBox = $("supMessages");
+            const nearBottom = msgBox.scrollHeight - msgBox.scrollTop - msgBox.clientHeight < 80;
+            msgBox.innerHTML = messages.map((m) => supportMsgHtml(m, c)).join("");
+            if (nearBottom) msgBox.scrollTop = msgBox.scrollHeight;
+            supMsgFingerprint = fp;
+          }
+          const toggle = $("supToggleStatus");
+          if (toggle) toggle.textContent = supStatus === "closed" ? "Reopen" : "Close";
+          return;
+        }
+
+        const prevReply = $("supReply");
+        const draft = !switching && prevReply ? prevReply.value : "";
+        const msgs = messages.map((m) => supportMsgHtml(m, c)).join("");
+        $("supThread").innerHTML = `
+          <div style="padding:0.85rem 1rem;border-bottom:1px solid #1d4d45;display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
+            <div><strong>${TZShop.esc(c.user_name || "Customer")}</strong><br /><span class="muted" style="font-size:0.78rem">${TZShop.esc(c.user_email || "")} ${c.user_phone ? "· " + TZShop.esc(c.user_phone) : ""}</span></div>
+            <button type="button" class="small" id="supToggleStatus">${supStatus === "closed" ? "Reopen" : "Close"}</button>
+          </div>
+          <div class="ts-inbox__messages" id="supMessages">${msgs}</div>
+          <div style="display:flex;gap:8px;padding:0.75rem;border-top:1px solid #1d4d45">
+            <textarea id="supReply" rows="1" placeholder="Type a reply…" style="flex:1;background:#0a2622;border:1px solid #2a6157;border-radius:8px;color:#e6f5f1;padding:8px;font:inherit;resize:none"></textarea>
+            <button type="button" class="primary small" id="supSend">Send</button>
+          </div>`;
+        const reply = $("supReply");
+        if (reply && draft) reply.value = draft;
+        const msgBox = $("supMessages");
+        if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+        supMsgFingerprint = fp;
+        bindSupportComposer(id);
+        loadSupport();
+      }
+
+      async function sendSupportReply() {
+        const ta = $("supReply");
+        const text = (ta.value || "").trim();
+        if (!text || !supActiveId) return;
+        $("supSend").disabled = true;
+        const r = await api(`/api/admin/support/conversations/${supActiveId}/messages`, {
+          method: "POST",
+          body: JSON.stringify({ body: text }),
+        });
+        $("supSend").disabled = false;
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          return window.TZShop.showToast(j.error || "Could not send", "err");
+        }
+        ta.value = "";
+        await openConversation(supActiveId, { force: true });
+      }
+
       ensureAuth().then((ok) => {
         if (!ok) return;
         initAdminMap();
+        loadCatalogueVendors();
+        loadSupport();
         loadOverview();
         loadMap();
         loadOrders();
@@ -695,10 +1227,21 @@
         loadApps();
         loadDriverApps();
         loadFinance();
+        populatePRVendors();
+        loadPaymentRequests();
         loadRefunds();
         setInterval(() => {
           loadOverview();
           if ($("panel-map").classList.contains("active")) loadMap();
+          if ($("panel-support").classList.contains("active")) {
+            loadSupport();
+            if (supActiveId) openConversation(supActiveId);
+          } else {
+            api("/api/admin/support/conversations")
+              .then((r) => r.json())
+              .then((j) => setSupBadge(j.unread_total || 0))
+              .catch(() => {});
+          }
         }, 8000);
       });
     </script>

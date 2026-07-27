@@ -232,7 +232,7 @@
             <div class="ts-field">
               <label for="citySelect" data-i18n="checkout.city">Your city</label>
               <select id="citySelect" aria-describedby="city-hint"></select>
-              <p id="city-hint" class="ts-details" style="margin: 0.25rem 0 0; font-size: 0.78rem" data-i18n="checkout.cityHint">We deliver to this city. Area updates from your address or GPS.</p>
+              <p id="city-hint" class="ts-details" style="margin: 0.25rem 0 0; font-size: 0.78rem" data-i18n="checkout.cityHint">Products come from the store closest to this city so delivery stays local.</p>
             </div>
             <div class="ts-field" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end">
               <button type="button" class="btn btn--secondary" id="btnUseLocation" style="flex: 1; min-width: 10rem" data-i18n="checkout.useGps">Use my location</button>
@@ -315,14 +315,16 @@
     <script src="/assets/i18n.js"></script>
     <script src="/assets/tzshop.js"></script>
     <script src="/assets/location.js"></script>
+    <script src="/assets/support-widget.js" defer></script>
     <script>
       const $ = (id) => document.getElementById(id);
-      const VENDOR_ID = "v1";
-      const api = (path, opt = {}) => fetch(path, { headers: { "Content-Type": "application/json" }, ...opt });
+      const api = (path, opt = {}) => window.TZShop.apiFetch(path, opt);
 
       let products = [];
       const cart = new Map();
+      let activeVendor = null;
       let lastPayment = null;
+      let deferredInstallPrompt = null;
       let currentUser = null;
       let signupRole = "shopper";
       const t = (key, params) => window.TZShop.t(key, params);
@@ -423,15 +425,20 @@
         $("sortBy").value = cur || "popular";
       }
 
+      let walletPaymentsEnabled = true;
+
       function fillPayOptions() {
         const cur = $("pay").value;
-        $("pay").innerHTML = [
-          ["cod", "checkout.payCod"],
-          ["mpesa", "checkout.payMpesa"],
-          ["airtel_money", "checkout.payAirtel"],
-          ["tigo_pesa", "checkout.payTigo"],
-          ["halopesa", "checkout.payHalo"],
-        ]
+        const methods = [["cod", "checkout.payCod"]];
+        if (walletPaymentsEnabled) {
+          methods.push(
+            ["mpesa", "checkout.payMpesa"],
+            ["airtel_money", "checkout.payAirtel"],
+            ["tigo_pesa", "checkout.payTigo"],
+            ["halopesa", "checkout.payHalo"]
+          );
+        }
+        $("pay").innerHTML = methods
           .map(([v, k]) => `<option value="${v}">${t(k)}</option>`)
           .join("");
         $("pay").value = cur || "cod";
@@ -475,12 +482,53 @@
         $("locationBar").classList.toggle("ts-location-bar--live", loc.live);
         $("locationBar").classList.toggle("ts-location-bar--shopping", shopping);
         let detail;
-        if (shopping) detail = t("location.shoppingIn", { place: label });
+        if (activeVendor) {
+          const dist =
+            activeVendor.distance_km != null
+              ? t("location.nearStoreDist", {
+                  store: activeVendor.name,
+                  km: activeVendor.distance_km,
+                })
+              : t("location.nearStore", { store: activeVendor.name, city: activeVendor.city || loc.city });
+          if (shopping) detail = `${t("location.shoppingIn", { place: label })} · ${dist}`;
+          else detail = dist;
+        } else if (shopping) detail = t("location.shoppingIn", { place: label });
         else if (loc.live) detail = t("location.barGps", { place: label });
-        else if (loc.area && loc.source === "address") detail = t("location.barAddress", { place: label });
         else if (loc.area) detail = t("location.barAddress", { place: label });
         else detail = t("location.barCity", { city: loc.city });
         $("locationBarDetail").textContent = detail;
+        if (activeVendor) $("storeName").textContent = activeVendor.name;
+      }
+
+      async function refreshCatalogForLocation({ clearCartIfVendorChange = true } = {}) {
+        const loc = getCustomerLocation();
+        const params = new URLSearchParams();
+        params.set("city_id", loc.cityId);
+        params.set("city", loc.city);
+        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+          params.set("lat", String(loc.lat));
+          params.set("lng", String(loc.lng));
+        }
+        const r = await api(`/api/products?${params}`);
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Could not load products");
+        const nextVendor = j.vendor || (j.vendors && j.vendors[0]) || null;
+        if (clearCartIfVendorChange && activeVendor && nextVendor && activeVendor.id !== nextVendor.id && cart.size) {
+          cart.clear();
+          window.TZShop.showToast(t("toast.cartClearedCity"), "info");
+        }
+        activeVendor = nextVendor;
+        products = j.products || [];
+        if (!products.length) {
+          $("productGrid").innerHTML = `<p class="ts-muted" style="grid-column:1/-1;color:var(--tz-muted)">${window.TZShop.esc(
+            t("menu.noNearby", { city: loc.city })
+          )}</p>`;
+        } else {
+          renderProducts();
+        }
+        updateLocationUI();
+        renderCart();
+        return j;
       }
 
       function onLanguageChanged() {
@@ -606,19 +654,44 @@
         }
         $("productGrid").innerHTML = filtered
           .map((p) => {
-            const low = p.stock_qty <= 5;
+            const out = p.stock_qty <= 0;
+            const low = !out && p.stock_qty <= 5;
             const addToCartLabel = t("product.addToBag");
-            const badge = low ? t("product.onlyLeft", { n: p.stock_qty }) : t("product.inStock");
+            const stockTag = out
+              ? `<span class="ts-tag ts-tag--out">${window.TZShop.esc(t("product.outOfStock"))}</span>`
+              : low
+                ? `<span class="ts-tag ts-tag--low">${window.TZShop.esc(t("product.lowStock", { n: p.stock_qty }))}</span>`
+                : `<span class="ts-tag ts-tag--stock">${window.TZShop.esc(t("product.stockLeft", { n: p.stock_qty }))}</span>`;
+            const brandTag = p.brand ? `<span class="ts-tag ts-tag--brand">${window.TZShop.esc(p.brand)}</span>` : "";
+            const sizeTag = p.size ? `<span class="ts-tag ts-tag--size">${window.TZShop.esc(p.size)}</span>` : "";
+            const bulk =
+              p.wholesale_enabled && p.wholesale_price_tzs > 0 && p.wholesale_min_qty > 0;
+            const bulkTag = bulk ? `<span class="ts-tag ts-tag--bulk">${window.TZShop.esc(t("product.bulk"))}</span>` : "";
+            const bulkNote = bulk
+              ? `<p class="ts-wholesale-note">${window.TZShop.esc(t("product.bulkFrom", { n: p.wholesale_min_qty, price: fmt(p.wholesale_price_tzs) }))}</p>`
+              : "";
+            const art = p.image_url
+              ? `<img src="${window.TZShop.esc(p.image_url)}" alt="${window.TZShop.esc(p.name)}" loading="lazy" />`
+              : initial(p.name);
+            const unit = p.unit ? ` <span style="font-size:0.75rem;color:var(--tz-muted);font-weight:500">/ ${window.TZShop.esc(p.unit)}</span>` : "";
+            const nearTag = p.vendor_name
+              ? `<span class="ts-tag ts-tag--near">${window.TZShop.esc(
+                  p.distance_km != null
+                    ? `${p.vendor_name} · ${p.distance_km} km`
+                    : `${p.vendor_name}${p.vendor_city ? ` · ${p.vendor_city}` : ""}`
+                )}</span>`
+              : "";
             return `<article class="ts-product" data-pid="${p.id}">
-            <div class="ts-product__art" aria-hidden="true">${initial(p.name)}</div>
+            <div class="ts-product__art" aria-hidden="true">${art}</div>
             <div class="ts-product__body">
               <h3 class="ts-product__name">${window.TZShop.esc(p.name)}</h3>
               <p class="ts-product__desc">${window.TZShop.esc(p.description || "")}</p>
+              <div class="ts-product__tags">${stockTag}${bulkTag}${brandTag}${sizeTag}${nearTag}</div>
+              ${bulkNote}
               <div class="ts-product__row">
-                <span class="ts-product__price">${fmt(p.price_tzs)}</span>
-                <span class="ts-badge ${low ? "" : "ts-badge--ok"}">${window.TZShop.esc(badge)}</span>
+                <span class="ts-product__price">${fmt(p.price_tzs)}${unit}</span>
               </div>
-              <button type="button" class="btn btn--primary btn--block" data-add="${p.id}">${addToCartLabel}</button>
+              <button type="button" class="btn btn--primary btn--block" data-add="${p.id}" ${out ? "disabled" : ""}>${out ? window.TZShop.esc(t("product.outOfStock")) : addToCartLabel}</button>
             </div>
           </article>`;
           })
@@ -633,11 +706,7 @@
       });
 
       async function loadProducts() {
-        const r = await api(`/api/products?vendor_id=${encodeURIComponent(VENDOR_ID)}`);
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error || "Could not load products");
-        products = j.products || [];
-        renderProducts();
+        return refreshCatalogForLocation({ clearCartIfVendorChange: false });
       }
 
       function updatePartnerNav(user) {
@@ -694,8 +763,13 @@
           return;
         }
         const loc = getCustomerLocation();
+        const vendorId = activeVendor?.id || products[0]?.vendor_id;
+        if (!vendorId) {
+          window.TZShop.showToast(t("toast.noNearbyVendor"), "err");
+          return;
+        }
         const body = {
-          vendor_id: VENDOR_ID,
+          vendor_id: vendorId,
           customer_name: $("cname").value.trim() || "Customer",
           customer_phone: $("phone").value,
           dropoff_label,
@@ -889,7 +963,8 @@
         const r = await api("/api/auth/login", { method: "POST", body: JSON.stringify(body) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) {
-          window.TZShop.showToast(j.error || t("toast.loginFail"), "err");
+          // A generic error prevents account-enumeration and stays translated.
+          window.TZShop.showToast(r.status === 401 ? t("toast.loginFail") : j.error || t("toast.loginFail"), "err");
           return;
         }
         $("loginPass").value = "";
@@ -980,10 +1055,17 @@
         if (e.key === "Escape" && !$("authModal").hidden) closeAuthModal();
       });
 
-      $("citySelect").addEventListener("change", () => {
+      $("citySelect").addEventListener("change", async () => {
         locSource = "city";
         locCoords = { lat: null, lng: null };
         updateLocationUI();
+        try {
+          await refreshCatalogForLocation();
+          const loc = getCustomerLocation();
+          window.TZShop.showToast(t("toast.nearbyUpdated", { city: loc.city }), "ok");
+        } catch (e) {
+          window.TZShop.showToast(String(e.message || e), "err");
+        }
       });
 
       $("caddress").addEventListener("input", () => {
@@ -1003,12 +1085,15 @@
         }
         $("btnUseLocation").disabled = true;
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
+          async (pos) => {
             locCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             locSource = "gps";
             const loc = getCustomerLocation();
             $("citySelect").value = loc.cityId;
             updateLocationUI();
+            try {
+              await refreshCatalogForLocation();
+            } catch (_) {}
             window.TZShop.showToast(t("toast.locationOk", { place: placeLabel(loc) }), "ok");
             $("btnUseLocation").disabled = false;
           },
@@ -1023,6 +1108,15 @@
       window.TZShop.initLang();
       $("langSelect").value = window.TZShop.getLang();
       fillCitySelect();
+      api("/api/public-config")
+        .then((r) => r.json())
+        .then((config) => {
+          walletPaymentsEnabled = config.wallet_payments_enabled !== false;
+          fillPayOptions();
+        })
+        .catch(() => {
+          // Preserve local demo behavior when the server is unavailable.
+        });
       try {
         const savedAddr = localStorage.getItem("tz_last_address");
         if (savedAddr) $("caddress").value = savedAddr;

@@ -1,12 +1,49 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 
-const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 12);
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 24 * 30); // 30 days — until explicit sign-out
+export { SESSION_TTL_MS };
 const users = new Map();
 const sessions = new Map();
 let dbPool = null;
 let dbReady = false;
 let dbDisabled = false;
+
+const DEV_STORE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".data", "auth-dev.json");
+const devStoreEnabled = process.env.AUTH_DEV_PERSIST !== "0" && process.env.NODE_ENV !== "test";
+
+/** Keep dev accounts alive across `node --watch` restarts when there is no Postgres. */
+function loadDevStore() {
+  if (!devStoreEnabled) return;
+  try {
+    const raw = fs.readFileSync(DEV_STORE_PATH, "utf8");
+    const data = JSON.parse(raw);
+    for (const u of data.users || []) users.set(u.id, u);
+    for (const s of data.sessions || []) {
+      if (new Date(s.expires_at).getTime() > Date.now()) sessions.set(s.id, s);
+    }
+  } catch {
+    // no snapshot yet — start clean
+  }
+}
+
+function saveDevStore() {
+  if (!devStoreEnabled) return;
+  try {
+    fs.mkdirSync(path.dirname(DEV_STORE_PATH), { recursive: true });
+    fs.writeFileSync(
+      DEV_STORE_PATH,
+      JSON.stringify({ users: [...users.values()], sessions: [...sessions.values()] }, null, 2)
+    );
+  } catch {
+    // persistence is best-effort in development
+  }
+}
+
+loadDevStore();
 
 function hasDb() {
   return Boolean(process.env.DATABASE_URL) && !dbDisabled;
@@ -57,10 +94,16 @@ async function ensureDb() {
     dbReady = false;
     const msg = String(e?.message || e || "unknown");
     const dev = process.env.NODE_ENV !== "production";
-    const unreachable = /ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(msg);
+    const unreachable = /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ENETUNREACH|EAI_AGAIN|EHOSTUNREACH/i.test(msg);
     if (process.env.DATABASE_URL && dev && unreachable) {
       // eslint-disable-next-line no-console
-      console.warn(`[garden] Postgres unavailable (${msg}) — using in-memory auth for development.`);
+      console.warn(
+        [
+          `[garden] Postgres unavailable (${msg}).`,
+          `[garden] Auth is now LOCAL: accounts saved in Postgres are NOT visible, so logging in with them fails.`,
+          `[garden] Fix DATABASE_URL in .env, or comment it out to work fully offline with the demo accounts.`,
+        ].join("\n")
+      );
       return null;
     }
     if (process.env.DATABASE_URL) {
@@ -78,8 +121,23 @@ function randomId(prefix) {
   return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
 }
 
+/**
+ * Canonical Tanzanian MSISDN so 0744000111, +255744000111, 255744000111 and
+ * 744000111 all resolve to the same account.
+ */
 function normalizePhone(v) {
-  return String(v || "").replace(/\D/g, "");
+  const digits = String(v || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("255") && digits.length === 12) return digits;
+  if (digits.startsWith("0") && digits.length === 10) return `255${digits.slice(1)}`;
+  if (digits.length === 9 && /^[67]/.test(digits)) return `255${digits}`;
+  return digits;
+}
+
+/** Digits used to match older records saved before phone canonicalisation. */
+function phoneSuffix(v) {
+  const digits = String(v || "").replace(/\D/g, "");
+  return digits.length >= 9 ? digits.slice(-9) : digits;
 }
 
 function normalizeEmail(v) {
@@ -201,6 +259,7 @@ export async function setUserDriverState(userId, { driver_id, driver_verificatio
     if (driver_verification_status === "rejected" && u.role === "driver" && !u.vendor_id) u.role = "shopper";
   }
   users.set(id, u);
+  saveDevStore();
   return publicUser(u);
 }
 
@@ -225,6 +284,7 @@ export async function setUserVendorId(userId, vendorId) {
   u.vendor_id = vid;
   if (u.role !== "admin") u.role = vid ? "vendor" : "shopper";
   users.set(id, u);
+  saveDevStore();
   return publicUser(u);
 }
 
@@ -323,6 +383,7 @@ export async function createUser(input) {
     }
   } else {
     users.set(user.id, user);
+    saveDevStore();
   }
   return publicUser(user);
 }
@@ -376,6 +437,7 @@ export async function updateUserProfile(userId, patch) {
   if (!updated.phone && !updated.email) throw new Error("phone or email required");
   assertUniqueIdentityForUpdate(id, { phone: updated.phone, email: updated.email });
   users.set(id, updated);
+  saveDevStore();
   return publicUser(updated);
 }
 
@@ -399,6 +461,7 @@ export async function changeUserPassword(userId, currentPassword, newPassword) {
   if (!verifyPassword(existing.password_hash, current)) throw new Error("Current password is incorrect");
   existing.password_hash = hashPassword(next);
   users.set(id, existing);
+  saveDevStore();
   return { ok: true };
 }
 
@@ -406,6 +469,7 @@ export async function authenticateUser({ phone, email, password }) {
   const phoneN = normalizePhone(phone);
   const emailN = normalizeEmail(email);
   if (!phoneN && !emailN) throw new Error("phone or email required");
+  const suffix = phoneSuffix(phoneN);
   const pool = await ensureDb();
   let u = null;
   if (pool) {
@@ -413,14 +477,19 @@ export async function authenticateUser({ phone, email, password }) {
       `
         select id, role, name, phone, email, locale, vendor_id, driver_id, password_hash, created_at
         from auth_users
-        where ($1 <> '' and phone = $1) or ($2 <> '' and email = $2)
+        where ($1 <> '' and (phone = $1 or right(regexp_replace(phone, '\\D', '', 'g'), 9) = $3))
+           or ($2 <> '' and email = $2)
         limit 1
       `,
-      [phoneN, emailN]
+      [phoneN, emailN, suffix]
     );
     u = r.rows[0] || null;
   } else {
-    u = [...users.values()].find((x) => (phoneN ? x.phone === phoneN : false) || (emailN ? x.email === emailN : false));
+    u = [...users.values()].find(
+      (x) =>
+        (phoneN ? x.phone === phoneN || (suffix && phoneSuffix(x.phone) === suffix) : false) ||
+        (emailN ? x.email === emailN : false)
+    );
   }
   if (!u) return null;
   if (!verifyPassword(u.password_hash, String(password || ""))) return null;
@@ -443,6 +512,7 @@ export async function createSession(userId) {
     );
   } else {
     sessions.set(sid, row);
+    saveDevStore();
   }
   return sid;
 }
@@ -453,6 +523,7 @@ export async function deleteSession(sessionId) {
     await pool.query(`delete from auth_sessions where id = $1`, [String(sessionId || "")]);
   } else {
     sessions.delete(sessionId);
+    saveDevStore();
   }
 }
 
@@ -477,6 +548,9 @@ export async function getUserBySession(sessionId) {
       await pool.query(`delete from auth_sessions where id = $1`, [sid]);
       return null;
     }
+    // Sliding expiry: keep active users signed in until they choose Sign out.
+    const nextExpiry = new Date(nowMs() + SESSION_TTL_MS).toISOString();
+    await pool.query(`update auth_sessions set expires_at = $2 where id = $1`, [sid, nextExpiry]);
     return publicUser({
       id: row.uid,
       role: row.role,
@@ -494,36 +568,20 @@ export async function getUserBySession(sessionId) {
   if (!s) return null;
   if (new Date(s.expires_at).getTime() <= nowMs()) {
     sessions.delete(s.id);
+    saveDevStore();
     return null;
   }
+  s.expires_at = new Date(nowMs() + SESSION_TTL_MS).toISOString();
+  sessions.set(sid, s);
+  saveDevStore();
   const u = users.get(s.user_id);
   return publicUser(u || null);
 }
 
-export async function seedAuthUsers() {
-  const pool = await ensureDb();
-  if (pool) {
-    const check = await pool.query(`select id from auth_users limit 1`);
-    if (check.rowCount > 0) return;
-  } else if (users.size > 0) {
-    return;
-  }
-  await createUser({
-    name: "Demo Shopper",
-    role: "shopper",
-    phone: "255744000111",
-    password: "shop1234",
-    locale: "en",
-  });
-  await createUser({
-    name: "Vendor v1",
-    role: "vendor",
-    email: "vendor@garden.local",
-    password: "vendor1234",
-    vendor_id: "v1",
-    locale: "en",
-  });
-  await createUser({
+const DEMO_ACCOUNTS = [
+  { name: "Demo Shopper", role: "shopper", phone: "255744000111", password: "shop1234", locale: "en" },
+  { name: "Vendor v1", role: "vendor", email: "vendor@garden.local", password: "vendor1234", vendor_id: "v1", locale: "en" },
+  {
     name: "Driver d1",
     role: "driver",
     email: "driver@garden.local",
@@ -531,12 +589,54 @@ export async function seedAuthUsers() {
     driver_id: "d1",
     driver_verification_status: "verified",
     locale: "en",
-  });
-  await createUser({
-    name: "Admin",
-    role: "admin",
-    email: "admin@garden.local",
-    password: "admin1234",
-    locale: "en",
-  });
+  },
+  { name: "Admin", role: "admin", email: "admin@garden.local", password: "admin1234", locale: "en" },
+];
+
+export async function seedAuthUsers() {
+  if (process.env.NODE_ENV === "production") {
+    await ensureAllowedAdminRoles();
+    return;
+  }
+  const pool = await ensureDb();
+  for (const account of DEMO_ACCOUNTS) {
+    const phoneN = normalizePhone(account.phone);
+    const emailN = normalizeEmail(account.email);
+    let exists;
+    if (pool) {
+      const r = await pool.query(
+        `select id from auth_users where ($1 <> '' and phone = $1) or ($2 <> '' and email = $2) limit 1`,
+        [phoneN, emailN]
+      );
+      exists = r.rowCount > 0;
+    } else {
+      exists = [...users.values()].some((u) => (phoneN && u.phone === phoneN) || (emailN && u.email === emailN));
+    }
+    if (!exists) await createUser(account);
+  }
+  await ensureAllowedAdminRoles();
+}
+
+/** Keep emails listed in ALLOWED_ADMIN_EMAILS as admin (survives restarts / role drift). */
+async function ensureAllowedAdminRoles() {
+  const allowed = String(process.env.ALLOWED_ADMIN_EMAILS || "")
+    .split(",")
+    .map((s) => normalizeEmail(s))
+    .filter(Boolean);
+  if (!allowed.length) return;
+  const pool = await ensureDb();
+  if (pool) {
+    for (const email of allowed) {
+      await pool.query(`update auth_users set role = 'admin' where lower(email) = $1 and role <> 'admin'`, [email]);
+    }
+    return;
+  }
+  let changed = false;
+  for (const u of users.values()) {
+    if (u.email && allowed.includes(normalizeEmail(u.email)) && u.role !== "admin") {
+      u.role = "admin";
+      changed = true;
+    }
+  }
+  if (changed) saveDevStore();
 }

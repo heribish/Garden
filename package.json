@@ -5,15 +5,18 @@
   "description": "garden — Tanzania-focused delivery MVP: orders, COD, mobile-money adapters (mock), webhooks",
   "type": "module",
   "scripts": {
-    "start": "node scripts/free-port.js && node src/server.js",
+    "start": "node src/server.js",
     "dev": "node scripts/free-port.js && node --watch src/server.js",
-    "test": "node --test",
-    "migrate:commerce": "node scripts/migrate-commerce.js"
+    "test": "node --test test/api.integration.test.js",
+    "migrate:commerce": "node scripts/migrate-commerce.js",
+    "create:admin": "node scripts/create-admin.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.2",
     "pg": "^8.20.0",
     "zod": "^4.3.6"
   }

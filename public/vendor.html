@@ -15,52 +15,54 @@
     <style>
       :root {
         font-family: var(--tz-font, "Plus Jakarta Sans", system-ui, sans-serif);
-        color: #0f172a;
-        background: #f1f5f9;
-      }
-      body {
-        margin: 0;
-        padding: 16px;
-        max-width: 1100px;
-        margin-inline: auto;
-      }
-      header {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 16px;
       }
       h1 {
         font-size: 1.2rem;
         margin: 0;
       }
+      /* Tabs adopt the shared premium pill bar */
       .tabs {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 16px;
+        gap: 0.4rem;
+        padding: 0.35rem;
+        background: var(--tz-elev);
+        border: 1px solid var(--tz-border);
+        border-radius: 999px;
+        box-shadow: var(--tz-shadow);
+        margin: 0 0 1.1rem;
+        width: fit-content;
+        max-width: 100%;
       }
       .tabs button {
-        padding: 8px 14px;
+        padding: 0.5rem 1rem;
         border-radius: 999px;
-        border: 1px solid #cbd5e1;
-        background: #fff;
+        border: none;
+        background: transparent;
+        color: var(--tz-muted);
         cursor: pointer;
         font: inherit;
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        transition: background 0.15s, color 0.15s;
+      }
+      .tabs button:hover {
+        color: var(--tz-text);
       }
       .tabs button.on {
-        background: #0f766e;
+        background: linear-gradient(180deg, var(--tz-teal-600), var(--tz-teal-800));
         color: #fff;
-        border-color: #0f766e;
+        box-shadow: 0 6px 16px -8px rgba(13, 148, 136, 0.8);
       }
       section.panel {
         display: none;
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 16px;
+        background: var(--tz-elev);
+        border: 1px solid var(--tz-border);
+        border-radius: calc(var(--tz-radius) + 4px);
+        padding: 1.25rem;
+        box-shadow: var(--tz-shadow-lg);
+        margin-bottom: 1rem;
       }
       section.panel.active {
         display: block;
@@ -72,18 +74,19 @@
         margin-bottom: 16px;
       }
       .stat {
-        background: #f8fafc;
-        border-radius: 10px;
-        padding: 12px;
-        border: 1px solid #e2e8f0;
+        background: var(--tz-elev-2);
+        border-radius: 12px;
+        padding: 14px;
+        border: 1px solid var(--tz-border);
       }
       .stat b {
         display: block;
-        font-size: 1.35rem;
+        font-size: 1.45rem;
+        letter-spacing: -0.02em;
       }
       .stat span {
         font-size: 0.8rem;
-        color: #64748b;
+        color: var(--tz-muted);
       }
       .chart {
         display: flex;
@@ -355,15 +358,18 @@
       </nav>
     </header>
 
-    <div class="ts-partner-wrap">
-      <div class="ts-partner-head">
+    <section class="ts-app-hero">
+      <div class="ts-app-hero__inner">
+        <p class="ts-app-hero__eyebrow" data-i18n="vendor.eyebrow">Vendor workspace</p>
         <h1 id="shopTitle" data-i18n="vendor.title">Vendor dashboard</h1>
         <p id="vendorSubLine"></p>
       </div>
+    </section>
 
-    <div id="vendorNotifStack" class="vendor-notif-stack" aria-live="polite" aria-atomic="false"></div>
+    <div class="ts-app-wrap">
+      <div id="vendorNotifStack" class="vendor-notif-stack" aria-live="polite" aria-atomic="false"></div>
 
-    <div class="ts-partner-tabs tabs" id="tabs">
+    <div class="tabs" id="tabs">
       <button type="button" data-tab="overview" class="on" data-i18n="vendor.tabOverview">Overview</button>
       <button type="button" data-tab="profile">Profile</button>
       <button type="button" data-tab="orders" data-i18n="vendor.tabOrders">Orders</button>
@@ -416,7 +422,24 @@
             <option value="0">Closed</option>
           </select>
         </div>
+        <div>
+          <label>Payment method (for settlements)</label>
+          <select id="vpSettleMethod">
+            <option value="mpesa">M-Pesa</option>
+            <option value="tigopesa">Tigo Pesa (Mixx)</option>
+            <option value="airtel">Airtel Money</option>
+            <option value="halopesa">HaloPesa</option>
+            <option value="bank">Bank transfer</option>
+          </select>
+        </div>
+        <div>
+          <label>Payment number / account</label>
+          <input id="vpSettleNumber" type="tel" inputmode="tel" placeholder="e.g. 0744 000 111" />
+        </div>
       </div>
+      <p class="muted" style="margin:0.25rem 0 0.5rem; font-size:0.8rem">
+        This is the number the admin uses to collect end-of-shift settlements (platform commission) from your shop.
+      </p>
       <button class="action" type="button" id="btnSaveVendorProfile">Save vendor profile</button>
 
       <h2 style="font-size: 1rem; margin-top: 18px">Account profile</h2>
@@ -426,12 +449,8 @@
           <input id="apName" />
         </div>
         <div>
-          <label>Phone</label>
-          <input id="apPhone" />
-        </div>
-        <div style="grid-column: 1 / -1">
-          <label>Email</label>
-          <input id="apEmail" />
+          <label>Phone number</label>
+          <input id="apPhone" type="tel" inputmode="tel" placeholder="e.g. 0744 000 111" />
         </div>
         <div>
           <label>Locale</label>
@@ -481,8 +500,36 @@
           <input id="pName" data-i18n-placeholder="vendor.namePh" placeholder="e.g. Maize flour 2kg" />
         </div>
         <div>
+          <label>Brand (optional)</label>
+          <input id="pBrand" placeholder="e.g. Azam" />
+        </div>
+        <div>
           <label data-i18n="vendor.price">Price (TZS)</label>
           <input id="pPrice" type="number" placeholder="12000" />
+        </div>
+        <div>
+          <label>Unit</label>
+          <input id="pUnit" placeholder="e.g. piece, kg, carton" />
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label>Size(s) <span class="muted" style="font-weight:500">optional — clothes, shoes, etc.</span></label>
+          <select id="pSizeKind" style="margin-bottom:0.45rem; max-width:220px">
+            <option value="">No sizes</option>
+            <option value="clothing">Clothing (XS–XXL)</option>
+            <option value="shoes">Shoes (EU 36–46)</option>
+            <option value="kids">Kids clothing</option>
+            <option value="custom">Custom sizes</option>
+          </select>
+          <div id="pSizeChips" class="cat-pick-row" style="margin-bottom:0.45rem; display:none" role="group" aria-label="Quick sizes"></div>
+          <input id="pSize" list="sizeSuggestions" placeholder="e.g. M, L, XL or 41, 42, 43" />
+          <datalist id="sizeSuggestions">
+            <option value="XS"></option><option value="S"></option><option value="M"></option><option value="L"></option>
+            <option value="XL"></option><option value="XXL"></option><option value="3XL"></option>
+            <option value="28"></option><option value="30"></option><option value="32"></option><option value="34"></option>
+            <option value="36"></option><option value="38"></option><option value="40"></option><option value="42"></option>
+            <option value="44"></option><option value="46"></option>
+          </datalist>
+          <p class="muted" style="margin:0.25rem 0 0; font-size:0.78rem">Tap quick sizes above or type your own. Separate multiple sizes with commas.</p>
         </div>
         <div>
           <label data-i18n="vendor.stock">Stock qty</label>
@@ -498,14 +545,35 @@
         </div>
         <div style="grid-column: 1 / -1">
           <label data-i18n="vendor.description">Description</label>
-          <textarea id="pDesc" rows="2"></textarea>
+          <textarea id="pDesc" rows="2" placeholder="Size, ingredients, packaging, anything customers should know"></textarea>
+        </div>
+        <div style="grid-column: 1 / -1; border:1px dashed var(--tz-border); border-radius:12px; padding:0.85rem; background:var(--tz-elev-2)">
+          <label class="row" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:600">
+            <input type="checkbox" id="pWholesale" style="width:auto" />
+            <span>Offer wholesale / bulk price</span>
+          </label>
+          <p class="muted" style="margin:0.3rem 0 0.6rem; font-size:0.8rem">Customers automatically get the bulk price when they buy at least the minimum quantity.</p>
+          <div class="form-grid" id="wholesaleFields" style="margin-top:0; display:none">
+            <div>
+              <label>Bulk price per unit (TZS)</label>
+              <input id="pWholesalePrice" type="number" placeholder="e.g. 10500" />
+            </div>
+            <div>
+              <label>Minimum qty for bulk price</label>
+              <input id="pWholesaleMin" type="number" placeholder="e.g. 12" />
+            </div>
+          </div>
         </div>
         <div style="grid-column: 1 / -1">
           <label>Photo (optional)</label>
           <input type="file" id="pPhoto" accept="image/*" />
+          <div id="pPhotoPreview" style="margin-top:0.5rem"></div>
         </div>
       </div>
-      <button class="action" type="button" id="btnAddProduct" data-i18n="vendor.saveProduct">Save product</button>
+      <div class="row" style="gap:0.5rem; margin-top:0.5rem">
+        <button class="action" type="button" id="btnAddProduct" data-i18n="vendor.saveProduct">Save product</button>
+        <button class="action ghost" type="button" id="btnCancelEdit" style="display:none">Cancel edit</button>
+      </div>
 
       <h2 style="font-size: 1rem; margin: 24px 0 8px">Categories</h2>
       <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end">
@@ -525,25 +593,20 @@
         <button class="action secondary" type="button" id="btnBulk" style="margin-top: 0.5rem">Apply bulk prices</button>
       </details>
 
-      <h2 style="font-size: 1rem; margin: 24px 0 8px">Products</h2>
-      <div style="overflow-x: auto">
-        <table>
-          <thead>
-            <tr>
-              <th>On</th>
-              <th>Name</th>
-              <th>Price</th>
-              <th>Stock</th>
-            </tr>
-          </thead>
-          <tbody id="prodRows"></tbody>
-        </table>
-      </div>
+      <h2 style="font-size: 1rem; margin: 24px 0 8px">Your products</h2>
+      <div class="ts-catalogue-grid" id="prodGrid"></div>
     </section>
 
     <section class="ts-partner-panel panel" id="panel-earnings">
       <div class="earn-grid" id="earnBoxes"></div>
-      <h2 style="font-size: 1rem">Request payout</h2>
+
+      <h2 style="font-size: 1rem; margin-top: 6px">Payment requests from admin</h2>
+      <p class="muted" style="margin:0 0 0.6rem; font-size:0.82rem">
+        Settlements the admin asks you to pay (e.g. platform commission at the end of each shift). Pay using your saved payment number, then mark it as paid.
+      </p>
+      <div id="payReqList"></div>
+
+      <h2 style="font-size: 1rem; margin-top: 20px">Request payout</h2>
       <div class="form-grid">
         <div>
           <label>Amount (TZS)</label>
@@ -578,6 +641,7 @@
 
     <script src="/assets/i18n.js"></script>
     <script src="/assets/tzshop.js"></script>
+    <script src="/assets/support-widget.js" defer></script>
     <script>
       const t = (k, p) => window.TZShop.t(k, p);
 
@@ -670,13 +734,14 @@
         $("vpPickup").value = j.vendor.pickup_label || "";
         $("vpPhone").value = j.vendor.shop_phone || "";
         $("vpOpen").value = j.vendor.shop_open ? "1" : "0";
+        if (j.vendor.settlement_method) $("vpSettleMethod").value = j.vendor.settlement_method;
+        $("vpSettleNumber").value = j.vendor.settlement_number || "";
       }
 
       function loadAccountProfile() {
         if (!currentActor) return;
         $("apName").value = currentActor.name || "";
         $("apPhone").value = currentActor.phone || "";
-        $("apEmail").value = currentActor.email || "";
         $("apLocale").value = currentActor.locale || "en";
       }
 
@@ -880,6 +945,8 @@
           pickup_label: $("vpPickup").value.trim(),
           shop_phone: $("vpPhone").value.trim(),
           shop_open: $("vpOpen").value === "1",
+          settlement_method: $("vpSettleMethod").value,
+          settlement_number: $("vpSettleNumber").value.trim(),
         };
         const r = await api(`/api/vendors/${VENDOR_ID}/profile`, {
           method: "PATCH",
@@ -895,7 +962,6 @@
         const body = {
           name: $("apName").value.trim(),
           phone: $("apPhone").value.trim(),
-          email: $("apEmail").value.trim(),
           locale: $("apLocale").value.trim() || "en",
         };
         const next = $("apNewPass").value;
@@ -1073,22 +1139,103 @@
         $("btnAddProduct").disabled = !$("pCat").value;
       });
 
+      const SIZE_PRESETS = {
+        clothing: ["XS", "S", "M", "L", "XL", "XXL", "3XL"],
+        shoes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
+        kids: ["2Y", "4Y", "6Y", "8Y", "10Y", "12Y", "14Y"],
+      };
+
+      function parseSizeList(raw) {
+        return String(raw || "")
+          .split(/[,;/|]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      function formatSizeList(list) {
+        return [...new Set(list.map((s) => s.trim()).filter(Boolean))].join(", ");
+      }
+
+      function renderSizeChips() {
+        const kind = $("pSizeKind").value;
+        const host = $("pSizeChips");
+        const presets = SIZE_PRESETS[kind];
+        if (!presets) {
+          host.style.display = "none";
+          host.innerHTML = "";
+          if (kind === "") $("pSize").value = "";
+          return;
+        }
+        host.style.display = "";
+        const selected = new Set(parseSizeList($("pSize").value).map((s) => s.toUpperCase()));
+        host.innerHTML = presets
+          .map((s) => {
+            const on = selected.has(s.toUpperCase()) || selected.has(s);
+            return `<button type="button" class="cat-pick-btn${on ? " on" : ""}" data-size="${s}">${s}</button>`;
+          })
+          .join("");
+        host.querySelectorAll("[data-size]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const val = btn.dataset.size;
+            let list = parseSizeList($("pSize").value);
+            const idx = list.findIndex((x) => x.toUpperCase() === val.toUpperCase());
+            if (idx >= 0) list.splice(idx, 1);
+            else list.push(val);
+            $("pSize").value = formatSizeList(list);
+            renderSizeChips();
+          });
+        });
+      }
+
+      $("pSizeKind").addEventListener("change", renderSizeChips);
+
+      let PRODUCTS = [];
+
       async function loadProductsTable() {
         const r = await api(`/api/vendors/${VENDOR_ID}/products?include_inactive=1`);
         const j = await r.json();
         const dash = await (await api(`/api/vendors/${VENDOR_ID}/dashboard`)).json();
         const lowIds = new Set((dash.low_stock_products || []).map((p) => p.id));
-        $("prodRows").innerHTML = j.products
-          .map((p) => {
-            const low = lowIds.has(p.id) ? "low" : "";
-            return `<tr class="${low}">
-            <td><input type="checkbox" ${p.active ? "checked" : ""} data-pid="${p.id}" class="tog-active" /></td>
-            <td>${p.name}</td>
-            <td>${p.price_tzs.toLocaleString()}</td>
-            <td>${p.stock_qty}</td>
-          </tr>`;
-          })
-          .join("");
+        PRODUCTS = j.products || [];
+        if (!PRODUCTS.length) {
+          $("prodGrid").innerHTML = '<p class="muted" style="grid-column:1/-1">No products yet. Add your first item above.</p>';
+          return;
+        }
+        $("prodGrid").innerHTML = PRODUCTS.map((p) => {
+          const out = p.stock_qty <= 0;
+          const low = !out && lowIds.has(p.id);
+          const art = p.image_url
+            ? `<img src="${TZShop.esc(p.image_url)}" alt="${TZShop.esc(p.name)}" />`
+            : TZShop.esc((p.name || "?").slice(0, 1).toUpperCase());
+          const stockTag = out
+            ? '<span class="ts-tag ts-tag--out">Out of stock</span>'
+            : low
+              ? `<span class="ts-tag ts-tag--low">Low: ${p.stock_qty}</span>`
+              : `<span class="ts-tag ts-tag--stock">${p.stock_qty} in stock</span>`;
+          const bulk = p.wholesale_enabled && p.wholesale_price_tzs > 0 && p.wholesale_min_qty > 0;
+          const bulkTag = bulk
+            ? `<span class="ts-tag ts-tag--bulk">Bulk ${Number(p.wholesale_price_tzs).toLocaleString()} ×${p.wholesale_min_qty}+</span>`
+            : "";
+          const brand = p.brand ? `<span class="ts-tag ts-tag--brand">${TZShop.esc(p.brand)}</span>` : "";
+          const sizeTag = p.size
+            ? `<span class="ts-tag ts-tag--size">${TZShop.esc(p.size)}</span>`
+            : "";
+          return `<div class="ts-prod-card${p.active ? "" : " ts-prod-card--off"}">
+            <div class="ts-prod-card__art">${art}</div>
+            <div class="ts-prod-card__body">
+              <p class="ts-prod-card__name">${TZShop.esc(p.name)}${p.unit ? ` <span class="muted" style="font-weight:500">/ ${TZShop.esc(p.unit)}</span>` : ""}</p>
+              <p class="ts-prod-card__meta"><strong>${Number(p.price_tzs).toLocaleString()} TZS</strong></p>
+              <div class="ts-product__tags" style="margin-top:0.35rem">${stockTag}${bulkTag}${brand}${sizeTag}</div>
+              <div class="ts-prod-card__row">
+                <button type="button" class="action ghost" style="padding:5px 10px;font-size:0.8rem" data-edit="${p.id}">Edit</button>
+                <label class="row" style="gap:0.35rem;font-size:0.8rem;cursor:pointer">
+                  <input type="checkbox" ${p.active ? "checked" : ""} data-pid="${p.id}" class="tog-active" style="width:auto" />
+                  <span>${p.active ? "Active" : "Hidden"}</span>
+                </label>
+              </div>
+            </div>
+          </div>`;
+        }).join("");
         document.querySelectorAll(".tog-active").forEach((cb) => {
           cb.addEventListener("change", async () => {
             const id = cb.dataset.pid;
@@ -1097,10 +1244,115 @@
               body: JSON.stringify({ active: cb.checked }),
             });
             if (!r2.ok) alert((await r2.json()).error);
+            await loadProductsTable();
             await loadDashboard();
           });
         });
+        document.querySelectorAll("[data-edit]").forEach((b) => {
+          b.addEventListener("click", () => startEditProduct(b.dataset.edit));
+        });
       }
+
+      /** Downscale an image file to a compact data URL (keeps us under the API body limit). */
+      function fileToDataUrl(file, maxDim = 900, quality = 0.82) {
+        return new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              let { width, height } = img;
+              if (width > maxDim || height > maxDim) {
+                const scale = maxDim / Math.max(width, height);
+                width = Math.round(width * scale);
+                height = Math.round(height * scale);
+              }
+              const canvas = document.createElement("canvas");
+              canvas.width = width;
+              canvas.height = height;
+              canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL("image/jpeg", quality));
+            };
+            img.onerror = reject;
+            img.src = fr.result;
+          };
+          fr.onerror = reject;
+          fr.readAsDataURL(file);
+        });
+      }
+
+      let editingProductId = null;
+      let stagedImage = undefined; // undefined = keep, null = remove, string = new
+
+      function startEditProduct(id) {
+        const p = PRODUCTS.find((x) => x.id === id);
+        if (!p) return;
+        editingProductId = id;
+        stagedImage = undefined;
+        $("pName").value = p.name || "";
+        $("pBrand").value = p.brand || "";
+        $("pPrice").value = p.price_tzs || "";
+        $("pUnit").value = p.unit || "";
+        $("pSize").value = p.size || "";
+        if (p.size) {
+          const sizes = parseSizeList(p.size);
+          const matchPreset = (preset) =>
+            sizes.length > 0 && sizes.every((s) => preset.some((x) => x.toUpperCase() === s.toUpperCase()));
+          if (matchPreset(SIZE_PRESETS.clothing)) $("pSizeKind").value = "clothing";
+          else if (matchPreset(SIZE_PRESETS.shoes)) $("pSizeKind").value = "shoes";
+          else if (matchPreset(SIZE_PRESETS.kids)) $("pSizeKind").value = "kids";
+          else $("pSizeKind").value = "custom";
+        } else {
+          $("pSizeKind").value = "";
+        }
+        renderSizeChips();
+        $("pStock").value = p.stock_qty ?? "";
+        $("pDesc").value = p.description || "";
+        if (p.category_id) {
+          $("pCat").value = p.category_id;
+          renderCategoryPick([...$("pCat").options].filter((o) => o.value).map((o) => ({ id: o.value, name: o.textContent })));
+        }
+        $("pWholesale").checked = Boolean(p.wholesale_enabled);
+        $("wholesaleFields").style.display = p.wholesale_enabled ? "" : "none";
+        $("pWholesalePrice").value = p.wholesale_price_tzs || "";
+        $("pWholesaleMin").value = p.wholesale_min_qty || "";
+        $("pPhotoPreview").innerHTML = p.image_url
+          ? `<img src="${TZShop.esc(p.image_url)}" alt="" style="max-width:120px;border-radius:10px" />`
+          : "";
+        $("btnAddProduct").textContent = "Update product";
+        $("btnCancelEdit").style.display = "";
+        $("btnAddProduct").disabled = !$("pCat").value;
+        document.querySelector('[data-tab="catalogue"]').click();
+        $("pName").scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      function resetProductForm() {
+        editingProductId = null;
+        stagedImage = undefined;
+        ["pName", "pBrand", "pPrice", "pUnit", "pSize", "pStock", "pDesc", "pWholesalePrice", "pWholesaleMin"].forEach((id) => ($(id).value = ""));
+        $("pSizeKind").value = "";
+        renderSizeChips();
+        $("pPhoto").value = "";
+        $("pPhotoPreview").innerHTML = "";
+        $("pWholesale").checked = false;
+        $("wholesaleFields").style.display = "none";
+        $("btnAddProduct").textContent = t("vendor.saveProduct");
+        $("btnCancelEdit").style.display = "none";
+      }
+
+      $("pWholesale").addEventListener("change", () => {
+        $("wholesaleFields").style.display = $("pWholesale").checked ? "" : "none";
+      });
+      $("btnCancelEdit").addEventListener("click", resetProductForm);
+      $("pPhoto").addEventListener("change", async () => {
+        const file = $("pPhoto").files[0];
+        if (!file) return;
+        try {
+          stagedImage = await fileToDataUrl(file);
+          $("pPhotoPreview").innerHTML = `<img src="${stagedImage}" alt="" style="max-width:120px;border-radius:10px" />`;
+        } catch (_) {
+          stagedImage = undefined;
+        }
+      });
 
       $("btnAddProduct").addEventListener("click", async () => {
         if (!$("pCat").value) {
@@ -1108,35 +1360,32 @@
           $("pCat").focus();
           return;
         }
-        let image_url = null;
-        const file = $("pPhoto").files[0];
-        if (file) {
-          image_url = await new Promise((res, rej) => {
-            const fr = new FileReader();
-            fr.onload = () => res(fr.result);
-            fr.onerror = rej;
-            fr.readAsDataURL(file);
-          });
-        }
+        const wholesale = $("pWholesale").checked;
         const body = {
           name: $("pName").value,
+          brand: $("pBrand").value.trim() || null,
+          unit: $("pUnit").value.trim() || null,
+          size: $("pSize").value.trim() || null,
           description: $("pDesc").value,
           price_tzs: Number($("pPrice").value),
           stock_qty: Number($("pStock").value),
           category_id: $("pCat").value || null,
-          image_url,
+          wholesale_enabled: wholesale,
+          wholesale_price_tzs: wholesale ? Number($("pWholesalePrice").value) || 0 : 0,
+          wholesale_min_qty: wholesale ? Number($("pWholesaleMin").value) || 0 : 0,
         };
-        const r = await api(`/api/vendors/${VENDOR_ID}/products`, { method: "POST", body: JSON.stringify(body) });
+        if (stagedImage !== undefined) body.image_url = stagedImage;
+        const url = editingProductId
+          ? `/api/vendors/${VENDOR_ID}/products/${editingProductId}`
+          : `/api/vendors/${VENDOR_ID}/products`;
+        const r = await api(url, { method: editingProductId ? "PATCH" : "POST", body: JSON.stringify(body) });
         const j = await r.json();
         if (!r.ok) return alert(j.error || "Failed");
-        $("pName").value = "";
-        $("pDesc").value = "";
-        $("pPrice").value = "";
-        $("pStock").value = "";
-        $("pPhoto").value = "";
+        const wasEdit = Boolean(editingProductId);
+        resetProductForm();
         await loadProductsTable();
         await loadDashboard();
-        alert("Product added: " + j.product.id);
+        TZShop.showToast(wasEdit ? "Product updated" : "Product added", "ok");
       });
 
       $("btnAddCat").addEventListener("click", async () => {
@@ -1182,6 +1431,56 @@
           <div class="earn-box"><strong>Available balance</strong><div>${e.available_balance_tzs.toLocaleString()} TZS</div></div>
           <div class="earn-box"><strong>Next payout</strong><div>${e.next_payout_date}</div></div>
         `;
+        await loadPaymentRequests();
+      }
+
+      async function loadPaymentRequests() {
+        const r = await api(`/api/vendors/${VENDOR_ID}/payment-requests`);
+        if (!r.ok) return;
+        const j = await r.json();
+        const reqs = j.requests || [];
+        if (!reqs.length) {
+          $("payReqList").innerHTML = '<p class="muted" style="font-size:0.85rem">No payment requests right now.</p>';
+          return;
+        }
+        const methodLabels = { mpesa: "M-Pesa", tigopesa: "Tigo Pesa", airtel: "Airtel Money", halopesa: "HaloPesa", bank: "Bank transfer" };
+        $("payReqList").innerHTML = reqs
+          .map((pr) => {
+            const badge =
+              pr.status === "paid"
+                ? '<span class="badge badge--pay">Paid</span>'
+                : pr.status === "cancelled"
+                  ? '<span class="badge">Cancelled</span>'
+                  : '<span class="badge" style="background:#fef3c7;color:#92400e">Pending</span>';
+            const dest = pr.settlement_number ? ` · pay to ${TZShop.esc(pr.settlement_number)}` : "";
+            const action =
+              pr.status === "pending"
+                ? `<button type="button" class="action" style="padding:6px 12px;font-size:0.82rem" data-pay="${pr.id}">Mark as paid</button>`
+                : pr.reference
+                  ? `<span class="muted" style="font-size:0.8rem">Ref: ${TZShop.esc(pr.reference)}</span>`
+                  : "";
+            return `<div class="ts-app-card" style="padding:0.85rem;margin-bottom:0.6rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:1.05rem;font-weight:700">${Number(pr.amount_tzs).toLocaleString()} TZS ${badge}</div>
+                <div class="muted" style="font-size:0.82rem">${TZShop.esc(pr.reason)} · ${TZShop.esc(pr.due_label)} · ${TZShop.esc(methodLabels[pr.method] || pr.method)}${dest}</div>
+              </div>
+              ${action}
+            </div>`;
+          })
+          .join("");
+        document.querySelectorAll("[data-pay]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            const ref = prompt("Enter the payment reference / transaction ID (optional):") || "";
+            const rr = await api(`/api/vendors/${VENDOR_ID}/payment-requests/${b.dataset.pay}/pay`, {
+              method: "POST",
+              body: JSON.stringify({ reference: ref }),
+            });
+            const jj = await rr.json().catch(() => ({}));
+            if (!rr.ok) return alert(jj.error || "Failed");
+            TZShop.showToast("Marked as paid", "ok");
+            loadPaymentRequests();
+          })
+        );
       }
 
       $("btnPayout").addEventListener("click", async () => {

@@ -4,9 +4,9 @@ services:
     name: garden
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && npm run migrate:commerce
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,8 +18,16 @@ services:
         generateValue: true
       - key: DATABASE_URL
         sync: false
+      - key: ALLOWED_ADMIN_EMAILS
+        sync: false
+      - key: PGSSL
+        value: "1"
+      # Keep mock wallet flows off in any public deployment. Set to "1" only
+      # after replacing the mock adapter with a contracted payment provider.
+      - key: WALLET_PAYMENTS_ENABLED
+        value: "0"
       - key: SESSION_TTL_MS
-        value: "43200000"
+        value: "2592000000"
       - key: API_RATE_LIMIT_WINDOW_MS
         value: "60000"
       - key: API_RATE_LIMIT_MAX

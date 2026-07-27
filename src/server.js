@@ -30,6 +30,7 @@ import {
   ledgerStatementCsv,
   listCategories,
   listProducts,
+  listProductsNear,
   listPublicProducts,
   listRefundRequests,
   listVendorApplications,
@@ -41,6 +42,11 @@ import {
   normalizeMsisdnTz,
   rejectVendorApplication,
   requestPayout,
+  createVendorPaymentRequest,
+  listVendorPaymentRequests,
+  listAllPaymentRequests,
+  markPaymentRequestPaid,
+  cancelPaymentRequest,
   setRefundRequestStatus,
   setVendorShopOpen,
   updateVendorProfile,
@@ -62,6 +68,7 @@ import {
   getUserBySession,
   seedAuthUsers,
   setUserVendorId,
+  SESSION_TTL_MS,
   updateUserProfile,
   userHasVendorAccess,
   userHasVerifiedDriverAccess,
@@ -81,6 +88,7 @@ import {
   notifyVendorApplicationApproved,
   notifyVendorApplicationRejected,
 } from "./notifications.js";
+import * as support from "./support.js";
 import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -89,6 +97,9 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3780);
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || "dev_webhook_secret_change_me";
 const DEV_TOOLS = process.env.ENABLE_DEV_TOOLS === "1" || process.env.NODE_ENV !== "production";
+// Simulated wallet payments remain available for local QA, never for a public deployment
+// unless a real provider integration explicitly enables them.
+const WALLET_PAYMENTS_ENABLED = process.env.WALLET_PAYMENTS_ENABLED === "1" || process.env.NODE_ENV !== "production";
 const API_RATE_LIMIT_WINDOW_MS = Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60_000);
 const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX || 120);
 const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES || 256 * 1024);
@@ -112,15 +123,21 @@ function securityHeaders(extra = {}) {
 
 function json(res, status, body, extraHeaders = {}) {
   const data = JSON.stringify(body);
-  res.writeHead(status, {
+  const headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(data),
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     ...securityHeaders(),
     ...extraHeaders,
-  });
+  };
+  // Preserve session cookie set earlier in the request (login / sliding renew / logout).
+  const existingCookie = res.getHeader("Set-Cookie");
+  if (existingCookie && headers["Set-Cookie"] == null) {
+    headers["Set-Cookie"] = existingCookie;
+  }
+  res.writeHead(status, headers);
   res.end(data);
 }
 
@@ -239,17 +256,22 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-function setSessionCookie(res, sid) {
+function sessionCookieValue(sid) {
+  const maxAge = Math.max(60, Math.floor(Number(SESSION_TTL_MS || 1000 * 60 * 60 * 24 * 30) / 1000));
   const isProd = process.env.NODE_ENV === "production";
   const cookie = [
     `sid=${encodeURIComponent(sid)}`,
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
-    `Max-Age=${Math.floor((Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 12)) / 1000)}`,
+    `Max-Age=${maxAge}`,
   ];
   if (isProd) cookie.push("Secure");
-  res.setHeader("Set-Cookie", cookie.join("; "));
+  return cookie.join("; ");
+}
+
+function setSessionCookie(res, sid) {
+  res.setHeader("Set-Cookie", sessionCookieValue(sid));
 }
 
 function clearSessionCookie(res) {
@@ -289,7 +311,11 @@ function assertAllowedFields(body, allowed) {
   if (extras.length) throw new Error(`Unexpected field(s): ${extras.join(", ")}`);
 }
 
-const authReady = seedAuthUsers();
+if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required in production. Refusing to start with non-durable application data.");
+}
+
+const authReady = Promise.all([seedAuthUsers(), support.ready()]);
 
 const PUBLIC_SIGNUP_ROLES = new Set(["shopper", "vendor", "driver"]);
 
@@ -310,6 +336,13 @@ function canCreateAdminAccount({ email, admin_code }) {
   const code = String(admin_code || "").trim();
   if (invite && code && invite.length >= 8 && code === invite) return true;
   return false;
+}
+
+function isAllowedAdminEmail(email) {
+  const emailN = String(email || "")
+    .trim()
+    .toLowerCase();
+  return Boolean(emailN && normalizeEmailList(process.env.ALLOWED_ADMIN_EMAILS).includes(emailN));
 }
 
 const signupSchema = z
@@ -409,7 +442,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
+      "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
       ...securityHeaders(),
     });
     return res.end();
@@ -419,6 +452,10 @@ const server = http.createServer(async (req, res) => {
   const cookies = parseCookies(req.headers.cookie);
   await authReady;
   const actor = await getUserBySession(cookies.sid);
+  // Refresh the browser cookie whenever the session is still valid (until Sign out).
+  if (actor && cookies.sid) {
+    setSessionCookie(res, cookies.sid);
+  }
   // eslint-disable-next-line no-console
   console.log(
     `${new Date().toISOString()} ${req.method} ${url.pathname} ip=${getClientIp(req)} actor=${actor?.id || "anon"}`
@@ -489,7 +526,16 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/health") {
-      return json(res, 200, { ok: true, region: "TZ", currency: "TZS", dev_tools: DEV_TOOLS });
+      return json(res, 200, {
+        ok: true,
+        region: "TZ",
+        currency: "TZS",
+        dev_tools: DEV_TOOLS,
+        wallet_payments_enabled: WALLET_PAYMENTS_ENABLED,
+      });
+    }
+    if (req.method === "GET" && url.pathname === "/api/public-config") {
+      return json(res, 200, { wallet_payments_enabled: WALLET_PAYMENTS_ENABLED });
     }
     if (req.method === "POST" && url.pathname === "/api/auth/signup") {
       const body = await readBody(req);
@@ -507,7 +553,9 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: "Invalid account type" });
       }
 
-      const accountRole = role === "admin" ? "admin" : "shopper";
+      // Bootstrap emails are always admins, even if their original account was
+      // created as a shopper before the allow-list was configured.
+      const accountRole = role === "admin" || isAllowedAdminEmail(data.email) ? "admin" : "shopper";
       const user = await createUser({ ...data, role: accountRole });
       let vendor_application = null;
       let driver_application = null;
@@ -543,7 +591,8 @@ const server = http.createServer(async (req, res) => {
       assertAllowedFields(body, new Set(["phone", "email", "password"]));
       const data = parseWithSchema(loginSchema, body);
       const user = await authenticateUser(data);
-      if (!user) return json(res, 401, { error: "Invalid credentials" });
+      // Keep this deliberately generic: do not reveal whether an account exists.
+      if (!user) return json(res, 401, { error: "Incorrect email, phone number, or password" });
       const sid = await createSession(user.id);
       setSessionCookie(res, sid);
       return json(res, 200, { user });
@@ -627,10 +676,45 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { order: o });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/support/thread") {
+      requireAuth(actor);
+      const thread = support.getUserThread(actor);
+      return json(res, 200, thread);
+    }
+    if (req.method === "POST" && url.pathname === "/api/support/messages") {
+      requireAuth(actor);
+      const body = await readBody(req);
+      assertAllowedFields(body, new Set(["body"]));
+      const message = support.postUserMessage(actor, body.body);
+      return json(res, 201, { message });
+    }
+    const supDel = req.method === "DELETE" && url.pathname.match(/^\/api\/support\/messages\/([^/]+)$/);
+    if (supDel) {
+      requireAuth(actor);
+      const out = support.deleteUserMessage(actor, supDel[1]);
+      return json(res, 200, out);
+    }
+    if (req.method === "POST" && url.pathname === "/api/support/read") {
+      requireAuth(actor);
+      support.markReadForUser(actor);
+      return json(res, 200, { ok: true });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/products") {
       const vendorId = url.searchParams.get("vendor_id");
       if (vendorId) {
         return json(res, 200, { products: listPublicProducts(vendorId) });
+      }
+      const city = url.searchParams.get("city") || undefined;
+      const cityId = url.searchParams.get("city_id") || undefined;
+      const latRaw = url.searchParams.get("lat");
+      const lngRaw = url.searchParams.get("lng");
+      const lat = latRaw != null && latRaw !== "" ? Number(latRaw) : undefined;
+      const lng = lngRaw != null && lngRaw !== "" ? Number(lngRaw) : undefined;
+      const radiusKm = url.searchParams.get("radius_km") ? Number(url.searchParams.get("radius_km")) : undefined;
+      if (city || cityId || (Number.isFinite(lat) && Number.isFinite(lng))) {
+        const near = listProductsNear({ city, cityId, lat, lng, radiusKm });
+        return json(res, 200, near);
       }
       return json(res, 200, { products: listProducts() });
     }
@@ -659,9 +743,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === "/api/vendor-applications") {
+      requireAuth(actor);
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["business_name", "contact_phone", "zone", "contact_name", "contact_email"]));
-      const app = createVendorApplication(body);
+      const app = createVendorApplication({ ...body, user_id: actor.id });
       return json(res, 201, { application: app });
     }
 
@@ -676,6 +761,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/payments/initiate") {
       requireAuth(actor);
+      if (!WALLET_PAYMENTS_ENABLED) {
+        return json(res, 503, {
+          error: "Mobile-money payments are not available yet. Please choose cash on delivery.",
+        });
+      }
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["order_id", "provider", "msisdn", "idempotency_key"]));
       const { order_id, provider, msisdn, idempotency_key } = parseWithSchema(paymentInitSchema, body);
@@ -699,6 +789,7 @@ const server = http.createServer(async (req, res) => {
 
     const hook = req.method === "POST" && url.pathname.match(/^\/api\/webhooks\/([^/]+)$/);
     if (hook) {
+      if (!WALLET_PAYMENTS_ENABLED) return json(res, 404, { error: "not found" });
       const provider = hook[1];
       getAdapter(provider);
       const body = await readBody(req);
@@ -1048,6 +1139,29 @@ const server = http.createServer(async (req, res) => {
       return json(res, 201, { payout: p });
     }
 
+    // Settlement payment requests the admin sends to a vendor (end of shift).
+    const prList = req.method === "GET" && url.pathname.match(/^\/api\/vendors\/([^/]+)\/payment-requests$/);
+    if (prList) {
+      const vendorId = prList[1];
+      requireVendorAccess(actor);
+      if (actor.role === "vendor" && actor.vendor_id !== vendorId) return json(res, 403, { error: "Forbidden" });
+      return json(res, 200, { requests: listVendorPaymentRequests(vendorId) });
+    }
+    const prPay = req.method === "POST" && url.pathname.match(/^\/api\/vendors\/([^/]+)\/payment-requests\/([^/]+)\/pay$/);
+    if (prPay) {
+      const [, vendorId, reqId] = prPay;
+      requireVendorAccess(actor);
+      if (actor.role === "vendor" && actor.vendor_id !== vendorId) return json(res, 403, { error: "Forbidden" });
+      const body = await readBody(req);
+      try {
+        const r = markPaymentRequestPaid(reqId, body);
+        if (r.vendor_id !== vendorId) return json(res, 403, { error: "Forbidden" });
+        return json(res, 200, { request: r });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+
     const stmtGet = req.method === "GET" && url.pathname.match(/^\/api\/vendors\/([^/]+)\/earnings\/statement$/);
     if (stmtGet) {
       const vendorId = stmtGet[1];
@@ -1237,6 +1351,64 @@ const server = http.createServer(async (req, res) => {
         contact_phone: out.contact_phone,
       }).catch((e) => console.error("notify vendor rejected", e));
       return json(res, 200, { application: out });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/support/conversations") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, {
+        conversations: support.listConversationsForAdmin(),
+        unread_total: support.adminUnreadTotal(),
+      });
+    }
+    const adSupGet = req.method === "GET" && url.pathname.match(/^\/api\/admin\/support\/conversations\/([^/]+)$/);
+    if (adSupGet) {
+      requireRole(actor, ["admin"]);
+      const thread = support.getConversationForAdmin(adSupGet[1]);
+      if (!thread) return json(res, 404, { error: "Conversation not found" });
+      support.markReadForAdmin(adSupGet[1]);
+      return json(res, 200, thread);
+    }
+    const adSupMsg = req.method === "POST" && url.pathname.match(/^\/api\/admin\/support\/conversations\/([^/]+)\/messages$/);
+    if (adSupMsg) {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      assertAllowedFields(body, new Set(["body"]));
+      const message = support.postAdminMessage(adSupMsg[1], actor, body.body);
+      return json(res, 201, { message });
+    }
+    const adSupStatus = req.method === "POST" && url.pathname.match(/^\/api\/admin\/support\/conversations\/([^/]+)\/status$/);
+    if (adSupStatus) {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      assertAllowedFields(body, new Set(["status"]));
+      const conversation = support.setConversationStatus(adSupStatus[1], String(body.status));
+      return json(res, 200, { conversation });
+    }
+
+    // Admin: request settlement payments from vendors (end of shift)
+    if (req.method === "GET" && url.pathname === "/api/admin/payment-requests") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, { requests: listAllPaymentRequests() });
+    }
+    const adPrCreate = req.method === "POST" && url.pathname.match(/^\/api\/admin\/vendors\/([^/]+)\/payment-requests$/);
+    if (adPrCreate) {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      try {
+        const r = createVendorPaymentRequest(adPrCreate[1], body);
+        return json(res, 201, { request: r });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+    const adPrCancel = req.method === "POST" && url.pathname.match(/^\/api\/admin\/payment-requests\/([^/]+)\/cancel$/);
+    if (adPrCancel) {
+      requireRole(actor, ["admin"]);
+      try {
+        return json(res, 200, { request: cancelPaymentRequest(adPrCancel[1]) });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/finance/summary") {

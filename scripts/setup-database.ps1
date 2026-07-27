@@ -5,24 +5,31 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
 
 if (-not (Test-Path .env)) {
-  Write-Host "Missing .env — copy .env.example to .env and set DATABASE_URL"
+  Write-Host "Missing .env - copy .env.example to .env and set DATABASE_URL"
   exit 1
 }
 
 $envContent = Get-Content .env -Raw
 if ($envContent -notmatch '(?m)^DATABASE_URL=(?!#)(\S+)') {
-  Write-Host @"
+  Write-Host ""
+  Write-Host "DATABASE_URL is not set in .env."
+  Write-Host ""
+  Write-Host "Option A - run the password helper:"
+  Write-Host "  .\scripts\set-supabase-password.ps1"
+  Write-Host ""
+  Write-Host "Option B - edit .env manually:"
+  Write-Host "  DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.fvtrigllwujrccryfiep.supabase.co:5432/postgres"
+  Write-Host "  PGSSL=1"
+  Write-Host ""
+  Write-Host "Get password: Supabase -> Project Settings -> Database"
+  exit 1
+}
 
-DATABASE_URL is not set in .env.
-
-1. Create a Supabase project: https://supabase.com
-2. Copy the Postgres URI from Project Settings -> Database
-3. Add to .env:
-   DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.xxx.supabase.co:5432/postgres
-
-See docs/supabase-setup.md for full steps.
-
-"@
+if ($envContent -match 'REPLACE_ME') {
+  Write-Host ""
+  Write-Host "DATABASE_URL still has placeholder REPLACE_ME."
+  Write-Host "Run: .\scripts\set-supabase-password.ps1"
+  Write-Host "Or edit .env and put your real Supabase database password."
   exit 1
 }
 

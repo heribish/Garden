@@ -38,6 +38,7 @@ async function startServer() {
       DATABASE_URL: "",
       NODE_ENV: "development",
       ENABLE_DEV_TOOLS: "1",
+      AUTH_DEV_PERSIST: "0",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -260,10 +261,20 @@ test("orders and payments are ownership scoped", async () => {
 test("vendor applications can be submitted and approved with vendor account provisioning", async () => {
   const { child, baseUrl } = await startServer();
   try {
-    const anon = createClient(baseUrl);
+    const applicant = createClient(baseUrl);
     const admin = createClient(baseUrl);
 
-    let r = await anon.request("/api/vendor-applications", {
+    let r = await applicant.request("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Hassan",
+        email: "hassan.vendor@garden.local",
+        password: "vendor-pass-123",
+      }),
+    });
+    assert.equal(r.status, 201);
+
+    r = await applicant.request("/api/vendor-applications", {
       method: "POST",
       body: JSON.stringify({
         business_name: "Mwenge Farm Stand",

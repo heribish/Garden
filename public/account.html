@@ -30,12 +30,13 @@
       </nav>
     </header>
 
-    <main class="ts-account" id="main">
-      <div id="accountLoading" class="ts-account-loading">
-        <p class="ts-muted" data-i18n="auth.checking">Checking session…</p>
+    <main class="ts-account" id="main" aria-busy="true">
+      <div id="accountSessionBar" class="ts-session-bar" role="status">
+        <span class="ts-session-bar__dot" aria-hidden="true"></span>
+        <span data-i18n="auth.checking">Checking session…</span>
       </div>
 
-      <div id="accountApp" class="ts-account-app" hidden>
+      <div id="accountApp" class="ts-account-app is-loading">
         <aside class="ts-account-nav" aria-label="Account sections">
           <div class="ts-account-nav__user">
             <div class="ts-account-avatar" id="acctAvatar" aria-hidden="true">G</div>
@@ -59,11 +60,21 @@
               <h1 data-i18n="account.navOverview">Overview</h1>
               <p class="ts-muted" data-i18n="account.overviewLead">Everything connected to your account in one place.</p>
             </header>
-            <div class="ts-stat-grid" id="acctStats"></div>
+            <div class="ts-stat-grid" id="acctStats">
+              <div class="ts-stat-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span><span class="ts-skel-line ts-skel-line--lg"></span></div>
+              <div class="ts-stat-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span><span class="ts-skel-line ts-skel-line--lg"></span></div>
+              <div class="ts-stat-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span><span class="ts-skel-line ts-skel-line--lg"></span></div>
+            </div>
             <h2 class="ts-account-subhead" data-i18n="account.quickLinks">Quick links</h2>
-            <div class="ts-link-cards" id="acctQuickLinks"></div>
+            <div class="ts-link-cards" id="acctQuickLinks">
+              <div class="ts-link-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span></div>
+              <div class="ts-link-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span></div>
+            </div>
             <h2 class="ts-account-subhead" data-i18n="account.capabilities">Your programs</h2>
-            <div class="ts-cap-grid" id="acctCaps"></div>
+            <div class="ts-cap-grid" id="acctCaps">
+              <div class="ts-cap-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span><span class="ts-skel-line"></span></div>
+              <div class="ts-cap-card ts-skel" aria-hidden="true"><span class="ts-skel-line"></span><span class="ts-skel-line"></span></div>
+            </div>
           </section>
 
           <section class="ts-account-pane" id="pane-orders" data-pane="orders" hidden>
@@ -165,8 +176,10 @@
                   <label for="drVehicle" data-i18n="account.vehicleType">Vehicle type</label>
                   <select id="drVehicle" required>
                     <option value="">—</option>
+                    <option value="Boda Boda">Boda Boda (motorbike)</option>
                     <option value="Motorbike">Motorbike</option>
                     <option value="Bicycle">Bicycle</option>
+                    <option value="Bajaji">Bajaji (tuk-tuk)</option>
                     <option value="Car">Car</option>
                     <option value="Van">Van</option>
                   </select>
@@ -196,6 +209,7 @@
 
     <script src="/assets/i18n.js"></script>
     <script src="/assets/tzshop.js"></script>
+    <script src="/assets/support-widget.js" defer></script>
     <script>
       (function () {
         const $ = (id) => document.getElementById(id);
@@ -422,8 +436,10 @@
         async function loadAccount() {
           const j = await api("/api/account");
           account = j.account;
-          $("accountLoading").hidden = true;
-          $("accountApp").hidden = false;
+          const bar = $("accountSessionBar");
+          if (bar) bar.hidden = true;
+          $("accountApp").classList.remove("is-loading");
+          $("main").removeAttribute("aria-busy");
           renderAll();
         }
 

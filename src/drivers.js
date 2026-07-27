@@ -161,11 +161,13 @@ function driverOnTimePct(d) {
   return d.on_time / t;
 }
 
-/** Higher = better priority when assigning offers */
+/** Higher = better priority when assigning offers. Distance dominates so drivers get nearby pickups. */
 export function driverPriorityScore(d, distanceToPickupKm) {
   const acc = driverAcceptanceRate(d);
   const ot = driverOnTimePct(d);
-  return d.rating_avg * 40 + acc * 35 + ot * 25 - distanceToPickupKm * 3;
+  const dist = Number.isFinite(distanceToPickupKm) ? distanceToPickupKm : 50;
+  // ~12 pts per km — a closer pickup almost always beats a slightly higher rating farther away
+  return d.rating_avg * 8 + acc * 6 + ot * 4 - dist * 12;
 }
 
 function hasActiveDeliveryJob(driverId) {
@@ -176,23 +178,126 @@ function hasActiveDeliveryJob(driverId) {
   return false;
 }
 
-function rankDriversForPickup(pickupLat, pickupLng) {
-  const online = [...drivers.values()].filter(
+function driverHasOpenOffer(driverId) {
+  for (const job of jobs.values()) {
+    if (job.status !== "offered") continue;
+    if (job.offered_driver_id !== driverId) continue;
+    if (job.offer_expires_at && new Date(job.offer_expires_at) < new Date()) continue;
+    return true;
+  }
+  return false;
+}
+
+function listIdleOnlineDrivers() {
+  return [...drivers.values()].filter(
     (d) =>
       d.online &&
       !d.suspended &&
       Number.isFinite(d.lat) &&
       Number.isFinite(d.lng) &&
-      !hasActiveDeliveryJob(d.id)
+      !hasActiveDeliveryJob(d.id) &&
+      !driverHasOpenOffer(d.id)
   );
+}
+
+function listJobsNeedingDrivers() {
+  return [...jobs.values()].filter((j) => {
+    if (j.driver_id) return false;
+    if (j.status === "offered") {
+      if (j.offer_expires_at && new Date(j.offer_expires_at) < new Date()) return true;
+      return false;
+    }
+    return j.status === "waiting_drivers" || j.status === "no_driver_available";
+  });
+}
+
+function rankDriversForPickup(pickupLat, pickupLng, { excludeIds = [] } = {}) {
+  const skip = new Set(excludeIds.map(String));
+  const online = listIdleOnlineDrivers().filter((d) => !skip.has(d.id));
   return online
-    .map((d) => ({
-      d,
-      dist: haversineKm(d.lat, d.lng, pickupLat, pickupLng),
-      score: driverPriorityScore(d, haversineKm(d.lat, d.lng, pickupLat, pickupLng)),
-    }))
-    .sort((a, b) => b.score - a.score)
+    .map((d) => {
+      const dist = haversineKm(d.lat, d.lng, pickupLat, pickupLng);
+      return { d, dist, score: driverPriorityScore(d, dist) };
+    })
+    .sort((a, b) => a.dist - b.dist || b.score - a.score)
     .map((x) => x.d);
+}
+
+/**
+ * Offer each waiting job to the closest idle driver (greedy nearest matching).
+ * Ensures drivers receive the nearest available order, not a far one claimed first.
+ */
+export function matchNearestOffers() {
+  const waiting = listJobsNeedingDrivers();
+  const idle = listIdleOnlineDrivers();
+  if (!waiting.length || !idle.length) {
+    for (const job of waiting) {
+      if (job.status !== "offered") job.status = idle.length ? "waiting_drivers" : "no_driver_available";
+    }
+    return { offered: 0 };
+  }
+
+  const pairs = [];
+  for (const job of waiting) {
+    const skipped = new Set((job.skipped_driver_ids || []).map(String));
+    for (const d of idle) {
+      if (skipped.has(d.id)) continue;
+      const dist = haversineKm(d.lat, d.lng, job.pickup.lat, job.pickup.lng);
+      pairs.push({
+        job,
+        driver: d,
+        dist,
+        score: driverPriorityScore(d, dist),
+      });
+    }
+  }
+
+  // Nearest pickup first; rating only breaks ties
+  pairs.sort((a, b) => a.dist - b.dist || b.score - a.score);
+
+  const usedDrivers = new Set();
+  const usedJobs = new Set();
+  let offered = 0;
+
+  for (const pair of pairs) {
+    if (usedDrivers.has(pair.driver.id) || usedJobs.has(pair.job.id)) continue;
+    if (driverHasOpenOffer(pair.driver.id) || hasActiveDeliveryJob(pair.driver.id)) continue;
+    if (pair.job.driver_id || (pair.job.status === "offered" && pair.job.offer_expires_at && new Date(pair.job.offer_expires_at) >= new Date())) {
+      continue;
+    }
+    offerJobToDriver(pair.job, pair.driver);
+    usedDrivers.add(pair.driver.id);
+    usedJobs.add(pair.job.id);
+    offered += 1;
+  }
+
+  for (const job of waiting) {
+    if (usedJobs.has(job.id)) continue;
+    const skipped = new Set((job.skipped_driver_ids || []).map(String));
+    const anyLeft = idle.some((d) => !skipped.has(d.id) && !usedDrivers.has(d.id));
+    if (!anyLeft && idle.length) {
+      // All idle drivers skipped this job — reset so nearest can try again next round
+      job.skipped_driver_ids = [];
+      job.status = "waiting_drivers";
+    } else {
+      job.status = anyLeft ? "waiting_drivers" : "no_driver_available";
+    }
+  }
+
+  return { offered };
+}
+
+function offerJobToDriver(job, driver) {
+  clearJobTimer(job);
+  job.status = "offered";
+  job.offered_driver_id = driver.id;
+  job.offer_generation += 1;
+  const gen = job.offer_generation;
+  const exp = new Date(Date.now() + OFFER_SECONDS * 1000);
+  job.offer_expires_at = iso(exp);
+  job._timer = setTimeout(() => {
+    expireOfferIfStale(job.id, gen, driver.id);
+  }, OFFER_SECONDS * 1000);
 }
 
 function clearJobTimer(job) {
@@ -222,12 +327,12 @@ export function setDriverOnline(driverId, online, lat, lng) {
   d.last_seen_at = iso();
   if (d.online) {
     for (const job of jobs.values()) {
-      if (job.status === "waiting_drivers" || job.status === "no_driver_available") {
-        if (job.status === "no_driver_available") job.pointer = 0;
+      if (job.status === "no_driver_available") {
         job.status = "waiting_drivers";
-        scheduleOfferRound(job.id);
+        job.skipped_driver_ids = [];
       }
     }
+    matchNearestOffers();
   }
   return d;
 }
@@ -238,6 +343,10 @@ export function setDriverLocation(driverId, lat, lng) {
   d.lat = Number(lat);
   d.lng = Number(lng);
   d.last_seen_at = iso();
+  // Re-match only when this driver is idle (don't yank an open offer they're viewing)
+  if (d.online && !hasActiveDeliveryJob(driverId) && !driverHasOpenOffer(driverId)) {
+    matchNearestOffers();
+  }
   return d;
 }
 
@@ -264,6 +373,7 @@ export function startDispatchForOrder(order) {
     offer_expires_at: null,
     offer_generation: 0,
     pointer: 0,
+    skipped_driver_ids: [],
     pickup: { lat: pickupLat, lng: pickupLng, label: v.pickup_label || "Shop" },
     dropoff: { lat: dropLat, lng: dropLng, label: order.dropoff_label || "Customer" },
     distance_shop_customer_km: Math.round(distShopToCust * 100) / 100,
@@ -278,45 +388,18 @@ export function startDispatchForOrder(order) {
   };
   jobs.set(jobId, job);
   order.delivery_job_id = jobId;
-  scheduleOfferRound(jobId);
+  matchNearestOffers();
   return job;
 }
 
 function scheduleOfferRound(jobId) {
   const job = jobs.get(jobId);
   if (!job || job.status === "completed" || job.status === "cancelled" || job.driver_id) return;
-
-  clearJobTimer(job);
-  const ranked = rankDriversForPickup(job.pickup.lat, job.pickup.lng);
-
-  if (!ranked.length) {
-    job.status = "waiting_drivers";
-    job.offered_driver_id = null;
-    return;
-  }
-
-  if (job.pointer >= ranked.length) {
-    job.status = "no_driver_available";
-    return;
-  }
-
-  const nextDriver = ranked[job.pointer];
-  if (!nextDriver || !nextDriver.online) {
-    job.pointer += 1;
-    scheduleOfferRound(jobId);
-    return;
-  }
-
-  job.status = "offered";
-  job.offered_driver_id = nextDriver.id;
-  job.offer_generation += 1;
-  const gen = job.offer_generation;
-  const exp = new Date(Date.now() + OFFER_SECONDS * 1000);
-  job.offer_expires_at = iso(exp);
-
-  job._timer = setTimeout(() => {
-    expireOfferIfStale(jobId, gen, nextDriver.id);
-  }, OFFER_SECONDS * 1000);
+  if (job.status === "offered" && job.offer_expires_at && new Date(job.offer_expires_at) >= new Date()) return;
+  job.status = "waiting_drivers";
+  job.offered_driver_id = null;
+  job.offer_expires_at = null;
+  matchNearestOffers();
 }
 
 function expireOfferIfStale(jobId, generation, driverId) {
@@ -325,37 +408,50 @@ function expireOfferIfStale(jobId, generation, driverId) {
   if (job.status !== "offered") return;
   const d = drivers.get(driverId);
   if (d) d.offer_timeouts += 1;
-  job.pointer += 1;
+  job.skipped_driver_ids = [...(job.skipped_driver_ids || []), driverId];
   job.offered_driver_id = null;
   job.offer_expires_at = null;
   job.status = "waiting_drivers";
   clearJobTimer(job);
-  scheduleOfferRound(jobId);
+  matchNearestOffers();
 }
 
 export function getCurrentOffer(driverId) {
   const d = drivers.get(driverId);
   if (!d || !d.online || hasActiveDeliveryJob(driverId)) return null;
+  ensureDispatchForReadyOrders();
+  if (!driverHasOpenOffer(driverId)) {
+    matchNearestOffers();
+  }
+
+  let best = null;
+  let bestDist = Infinity;
   for (const job of jobs.values()) {
     if (job.status !== "offered" || job.offered_driver_id !== driverId) continue;
     if (job.offer_expires_at && new Date(job.offer_expires_at) < new Date()) continue;
     const distToPickup = haversineKm(d.lat, d.lng, job.pickup.lat, job.pickup.lng);
-    const etaToPickupMin = estimateEtaMin(distToPickup, 18);
-    return {
-      job_id: job.id,
-      order_id: job.order_id,
-      expires_at: job.offer_expires_at,
-      seconds_left: Math.max(0, Math.round((new Date(job.offer_expires_at) - Date.now()) / 1000)),
-      pickup: job.pickup,
-      dropoff: job.dropoff,
-      distance_shop_customer_km: job.distance_shop_customer_km,
-      eta_shop_to_customer_min: job.eta_shop_to_customer_min,
-      distance_to_pickup_km: Math.round(distToPickup * 100) / 100,
-      eta_to_pickup_min: etaToPickupMin,
-      earnings_tzs: job.earnings_tzs,
-    };
+    if (distToPickup < bestDist) {
+      bestDist = distToPickup;
+      best = job;
+    }
   }
-  return null;
+  if (!best) return null;
+  const distToPickup = bestDist;
+  const etaToPickupMin = estimateEtaMin(distToPickup, 18);
+  return {
+    job_id: best.id,
+    order_id: best.order_id,
+    expires_at: best.offer_expires_at,
+    seconds_left: Math.max(0, Math.round((new Date(best.offer_expires_at) - Date.now()) / 1000)),
+    pickup: best.pickup,
+    dropoff: best.dropoff,
+    distance_shop_customer_km: best.distance_shop_customer_km,
+    eta_shop_to_customer_min: best.eta_shop_to_customer_min,
+    distance_to_pickup_km: Math.round(distToPickup * 100) / 100,
+    eta_to_pickup_min: etaToPickupMin,
+    earnings_tzs: best.earnings_tzs,
+    nearest: true,
+  };
 }
 
 export function respondToOffer(driverId, accept) {
@@ -370,11 +466,11 @@ export function respondToOffer(driverId, accept) {
   d.offers_received += 1;
   if (!accept) {
     d.offers_declined += 1;
-    job.pointer += 1;
+    job.skipped_driver_ids = [...(job.skipped_driver_ids || []), driverId];
     job.offered_driver_id = null;
     job.offer_expires_at = null;
     job.status = "waiting_drivers";
-    scheduleOfferRound(job.id);
+    matchNearestOffers();
     return { ok: true, declined: true };
   }
   d.offers_accepted += 1;
@@ -384,6 +480,7 @@ export function respondToOffer(driverId, accept) {
   job.status = "active_pickup";
   const order = getOrder(job.order_id);
   if (order) transitionOrder(order, "driver_en_route_pickup");
+  matchNearestOffers();
   return { ok: true, job };
 }
 
@@ -660,7 +757,7 @@ export function getDriverPerformance(driverId) {
     deliveries_completed: d.deliveries_completed,
     rating_count: d.rating_count ?? 0,
     priority_score_hint:
-      "Higher-rated drivers with strong acceptance and on-time stats rank closer for offers (see driverPriorityScore in drivers.js).",
+      "Offers go to the nearest idle driver first (GPS distance to shop pickup). Rating and acceptance only break ties.",
   };
 }
 

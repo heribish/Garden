@@ -3,8 +3,13 @@
 ## Prerequisites
 
 - Code pushed to GitHub (private repo `heribish/garden`)
-- [Supabase](supabase-setup.md) database with migrations applied
+- [Supabase](supabase-setup.md) database with a newly generated, tested connection string
 - [Render](https://render.com) account (free tier works)
+
+> **Launch gate:** This repository currently keeps catalog, orders, dispatch,
+> support, and ledger data in process memory. Do not make the service public
+> until the durable-commerce persistence work is complete and verified. A Render
+> restart would otherwise discard that operational data.
 
 ## Steps
 
@@ -24,13 +29,15 @@
    - Render reads [`render.yaml`](../render.yaml) automatically
 
 3. **Set required secrets in Render**
-   - `DATABASE_URL` — Supabase Postgres URI (use pooler in production)
+   - `DATABASE_URL` — freshly generated Supabase Postgres URI (use pooler in production)
+   - `PGSSL=1`
    - `WEBHOOK_SECRET` — long random string (Render can auto-generate)
+   - `WALLET_PAYMENTS_ENABLED=0` — keep mock mobile-money payments disabled
    - Optional: `RESEND_API_KEY`, `SMS_WEBHOOK_URL` for notifications
 
 4. **Deploy**
    - Render builds with `npm install` and starts with `npm start`
-   - Health check hits `/` (landing page)
+   - Health check hits `/api/health`
 
 5. **Post-deploy**
    - Run `npm run migrate:commerce` once against production DB if not done yet

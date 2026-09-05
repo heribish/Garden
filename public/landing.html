@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" data-i18n="landing.metaDesc" content="Garden connects shoppers, local vendors, and drivers on one platform. Groceries and essentials to your door in Dar es Salaam — same day, paid your way." />
     <meta name="theme-color" content="#0d9488" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="garden" />
     <title data-i18n="landing.metaTitle">garden — Tanzania's marketplace, delivered</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -35,6 +39,7 @@
             <option value="en">English</option>
           </select>
           <a class="btn btn--ghost ts-lp-signin" href="/shop?auth=signin" data-i18n="landing.signIn">Sign in</a>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
           <a class="btn btn--primary" href="/shop" data-i18n="landing.heroCtaShop">Start shopping</a>
         </div>
       </div>
@@ -65,7 +70,7 @@
               <a class="btn btn--primary btn--lg" href="/shop" data-i18n="landing.heroCtaShop">Start shopping</a>
               <a class="btn btn--ghost btn--lg" href="/account" data-i18n="landing.heroCtaPartner">Become a partner</a>
             </div>
-            <p class="ts-lp-hero__note" data-i18n="landing.heroNote">No app to install · Works on any phone · Kiswahili & English</p>
+            <p class="ts-lp-hero__note" data-i18n="landing.heroNote">Install as app · Works on any phone · Kiswahili & English</p>
           </div>
 
           <div class="ts-lp-hero__visual" aria-hidden="true">
@@ -248,6 +253,7 @@
         const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 8);
         window.addEventListener("scroll", onScroll, { passive: true });
         onScroll();
+        window.TZShop.initInstallPrompt();
       })();
     </script>
   </body>

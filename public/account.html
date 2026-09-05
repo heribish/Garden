@@ -4,8 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0d9488" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="garden" />
     <title data-i18n="account.metaTitle">My account — garden</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -91,6 +95,20 @@
               <p class="ts-muted" data-i18n="account.profileLead">Keep your contact details up to date.</p>
             </header>
             <form class="ts-account-form" id="profileForm">
+              <div class="ts-profile-photo">
+                <div class="ts-profile-photo__preview" id="pfAvatar" aria-hidden="true">G</div>
+                <div class="ts-profile-photo__actions">
+                  <strong data-i18n="account.profilePhoto">Profile photo</strong>
+                  <p class="ts-muted" data-i18n="account.profilePhotoHint">Optional. Shown on your account, vendor, and driver profiles.</p>
+                  <div class="ts-profile-photo__btns">
+                    <label class="btn btn--secondary btn--sm" style="cursor:pointer">
+                      <span data-i18n="account.choosePhoto">Choose photo</span>
+                      <input id="pfPhoto" type="file" accept="image/*" hidden />
+                    </label>
+                    <button type="button" class="btn btn--secondary btn--sm" id="pfPhotoClear" hidden data-i18n="account.removePhoto">Remove</button>
+                  </div>
+                </div>
+              </div>
               <div class="ts-field">
                 <label for="pfName" data-i18n="auth.yourName">Your name</label>
                 <input id="pfName" name="name" autocomplete="name" />
@@ -185,6 +203,18 @@
                   </select>
                 </div>
                 <div class="ts-field">
+                  <label for="drMake" data-i18n="account.vehicleMake">Make</label>
+                  <input id="drMake" required placeholder="e.g. Bajaj, Toyota" />
+                </div>
+                <div class="ts-field">
+                  <label for="drModel" data-i18n="account.vehicleModel">Model</label>
+                  <input id="drModel" required placeholder="e.g. Boxer, Hilux" />
+                </div>
+                <div class="ts-field">
+                  <label for="drYear" data-i18n="account.vehicleYear">Year made</label>
+                  <input id="drYear" type="number" inputmode="numeric" min="1980" max="2030" required placeholder="e.g. 2019" />
+                </div>
+                <div class="ts-field">
                   <label for="drPlate" data-i18n="account.plate">Plate number</label>
                   <input id="drPlate" required />
                 </div>
@@ -214,6 +244,7 @@
       (function () {
         const $ = (id) => document.getElementById(id);
         let account = null;
+        let stagedAvatar = undefined; // undefined = keep, null = remove, string = new data URL
 
         async function api(path, options = {}) {
           const res = await fetch(path, {
@@ -335,13 +366,58 @@
                 ${statusPill(o.status)}
               </div>
               <p class="ts-muted">${TZShop.esc(formatDate(o.created_at))} · ${TZShop.esc(o.dropoff_label || "")}</p>
+              <div style="margin:0.35rem 0 0.15rem;font-size:0.82rem;display:grid;gap:0.2rem">
+                ${
+                  o.subtotal_tzs != null
+                    ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span class="ts-muted">${TZShop.esc(TZShop.t("cart.subtotal"))}</span><span>${TZShop.esc(TZShop.moneyTzs(o.subtotal_tzs))}</span></div>`
+                    : ""
+                }
+                ${
+                  o.delivery_fare_tzs != null
+                    ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span class="ts-muted">${TZShop.esc(TZShop.t("cart.deliveryFare"))}${o.delivery_distance_km != null ? ` · ${o.delivery_distance_km} km` : ""}</span><span>${TZShop.esc(TZShop.moneyTzs(o.delivery_fare_tzs))}</span></div>`
+                    : ""
+                }
+              </div>
               <div class="ts-order-card__foot">
-                <span>${TZShop.esc(TZShop.moneyTzs(o.total_tzs))}</span>
+                <span><strong>${TZShop.esc(TZShop.moneyTzs(o.total_tzs))}</strong></span>
                 <span class="ts-muted">${TZShop.esc(orderStatusLabel(o.status))}</span>
               </div>
             </article>`
             )
             .join("");
+        }
+
+        function formatAppDate(isoStr) {
+          if (!isoStr) return "—";
+          try {
+            return new Date(isoStr).toLocaleString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } catch (_) {
+            return String(isoStr);
+          }
+        }
+
+        function todayYmd() {
+          const d = new Date();
+          return d.toISOString().slice(0, 10);
+        }
+
+        function plusYearsYmd(years) {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() + years);
+          return d.toISOString().slice(0, 10);
+        }
+
+        function syncDriverDateDefaults() {
+          const exp = $("drExpiry");
+          if (!exp) return;
+          exp.min = todayYmd();
+          if (!exp.value) exp.value = plusYearsYmd(1);
         }
 
         function renderVendorPane() {
@@ -360,6 +436,7 @@
             $("vendorStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--warn">
               <h3>${TZShop.esc(TZShop.t("account.vendorPending"))}</h3>
               <p class="ts-muted">${TZShop.esc(app.business_name)} · ${TZShop.esc(app.zone)}</p>
+              <p class="ts-muted" style="font-size:0.82rem">${TZShop.esc(TZShop.t("account.appliedOn"))}: ${TZShop.esc(formatAppDate(app.created_at))}</p>
               <p>${statusPill("pending")}</p>
             </div>`;
             $("vendorForm").hidden = true;
@@ -369,6 +446,7 @@
             $("vendorStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--bad">
               <h3>${TZShop.esc(TZShop.t("account.vendorRejected"))}</h3>
               <p class="ts-muted">${TZShop.esc(TZShop.t("account.vendorRejectedDesc"))}</p>
+              ${app.created_at ? `<p class="ts-muted" style="font-size:0.82rem">${TZShop.esc(TZShop.t("account.appliedOn"))}: ${TZShop.esc(formatAppDate(app.created_at))}</p>` : ""}
             </div>`;
           } else {
             $("vendorStatus").innerHTML = `<div class="ts-status-card__inner">
@@ -382,22 +460,45 @@
           $("vbPhone").value = app?.contact_phone || account.user.phone || "";
         }
 
+        function vehicleSummaryLine(veh, app) {
+          const type = veh?.vehicle_type || app?.vehicle_type || "—";
+          const make = veh?.vehicle_make || app?.vehicle_make || "";
+          const model = veh?.vehicle_model || app?.vehicle_model || "";
+          const year = veh?.vehicle_year ?? app?.vehicle_year;
+          const plate = veh?.vehicle_plate || app?.vehicle_plate || "—";
+          const color = veh?.vehicle_color || app?.vehicle_color || "";
+          const mm = [make, model].filter(Boolean).join(" ");
+          const bits = [type, mm || null, year != null ? String(year) : null, plate, color || null].filter(Boolean);
+          return bits.join(" · ");
+        }
+
         function renderDriverPane() {
           const d = account.capabilities.driver;
           const app = d.application;
+          const veh = d.vehicle;
           if (d.status === "verified" && d.driver_id) {
             $("driverStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--ok">
               <h3>${TZShop.esc(TZShop.t("account.driverVerified"))}</h3>
               <p class="ts-muted">${TZShop.esc(TZShop.t("account.driverVerifiedDesc"))}</p>
-              <a class="btn btn--primary" href="/driver">${TZShop.esc(TZShop.t("auth.goDriver"))}</a>
+              <p class="ts-muted" style="font-size:0.9rem"><strong>${TZShop.esc(TZShop.t("account.yourVehicle"))}:</strong> ${TZShop.esc(vehicleSummaryLine(veh, app))}</p>
+              ${app?.created_at ? `<p class="ts-muted" style="font-size:0.82rem">${TZShop.esc(TZShop.t("account.appliedOn"))}: ${TZShop.esc(formatAppDate(app.created_at))}</p>` : ""}
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem">
+                <a class="btn btn--primary" href="/driver#profile">${TZShop.esc(TZShop.t("auth.goDriver"))}</a>
+                <button type="button" class="btn btn--secondary" data-pane-jump="profile">${TZShop.esc(TZShop.t("account.profilePhoto"))}</button>
+              </div>
+              <p class="ts-muted" style="font-size:0.8rem;margin:0.65rem 0 0">${TZShop.esc(TZShop.t("account.driverEditHint"))}</p>
             </div>`;
             $("driverForm").hidden = true;
+            const jump = $("driverStatus").querySelector("[data-pane-jump]");
+            if (jump) jump.addEventListener("click", () => setPane("profile"));
             return;
           }
           if (d.status === "pending" || (app && app.status === "pending")) {
             $("driverStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--warn">
               <h3>${TZShop.esc(TZShop.t("account.driverPending"))}</h3>
               <p class="ts-muted">${TZShop.esc(TZShop.t("account.driverPendingDesc"))}</p>
+              ${app ? `<p class="ts-muted" style="font-size:0.9rem">${TZShop.esc(vehicleSummaryLine(null, app))}</p>` : ""}
+              ${app?.created_at ? `<p class="ts-muted" style="font-size:0.82rem">${TZShop.esc(TZShop.t("account.appliedOn"))}: ${TZShop.esc(formatAppDate(app.created_at))}</p>` : ""}
               ${statusPill("pending")}
             </div>`;
             $("driverForm").hidden = true;
@@ -407,6 +508,7 @@
             $("driverStatus").innerHTML = `<div class="ts-status-card__inner ts-status-card--bad">
               <h3>${TZShop.esc(TZShop.t("account.driverRejected"))}</h3>
               <p class="ts-muted">${app?.rejection_reason || TZShop.t("account.driverRejectedDesc")}</p>
+              ${app?.created_at ? `<p class="ts-muted" style="font-size:0.82rem">${TZShop.esc(TZShop.t("account.appliedOn"))}: ${TZShop.esc(formatAppDate(app.created_at))}</p>` : ""}
             </div>`;
           } else {
             $("driverStatus").innerHTML = `<div class="ts-status-card__inner">
@@ -417,13 +519,22 @@
           $("driverForm").hidden = false;
           $("drName").value = account.user.name || "";
           $("drPhone").value = account.user.phone || "";
+          syncDriverDateDefaults();
+          const vehicle = $("drVehicle");
+          if (vehicle && !vehicle.dataset.dateBound) {
+            vehicle.dataset.dateBound = "1";
+            vehicle.addEventListener("change", syncDriverDateDefaults);
+          }
         }
 
         function renderAll() {
           const u = account.user;
           $("acctName").textContent = u.name || "—";
           $("acctEmail").textContent = u.email || u.phone || "—";
-          $("acctAvatar").textContent = (u.name || "G").charAt(0).toUpperCase();
+          const avatarUrl = stagedAvatar !== undefined ? stagedAvatar : u.avatar_url;
+          TZShop.renderAvatar($("acctAvatar"), { url: avatarUrl, name: u.name });
+          TZShop.renderAvatar($("pfAvatar"), { url: avatarUrl, name: u.name });
+          $("pfPhotoClear").hidden = !avatarUrl;
           $("pfName").value = u.name || "";
           $("pfPhone").value = u.phone || "";
           $("pfEmail").value = u.email || "";
@@ -478,19 +589,39 @@
           $("profileForm").addEventListener("submit", async (e) => {
             e.preventDefault();
             try {
+              const body = {
+                name: $("pfName").value,
+                phone: $("pfPhone").value,
+                email: $("pfEmail").value,
+              };
+              if (stagedAvatar !== undefined) body.avatar_url = stagedAvatar;
               await api("/api/auth/me", {
                 method: "PATCH",
-                body: JSON.stringify({
-                  name: $("pfName").value,
-                  phone: $("pfPhone").value,
-                  email: $("pfEmail").value,
-                }),
+                body: JSON.stringify(body),
               });
+              stagedAvatar = undefined;
               TZShop.showToast(TZShop.t("account.profileSaved"), "success");
               await loadAccount();
             } catch (err) {
               TZShop.showToast(err.message, "error");
             }
+          });
+
+          $("pfPhoto").addEventListener("change", async () => {
+            const file = $("pfPhoto").files && $("pfPhoto").files[0];
+            $("pfPhoto").value = "";
+            if (!file) return;
+            try {
+              stagedAvatar = await TZShop.fileToDataUrl(file, 480, 0.78);
+              renderAll();
+            } catch (err) {
+              TZShop.showToast(err.message || "Could not read photo", "error");
+            }
+          });
+
+          $("pfPhotoClear").addEventListener("click", () => {
+            stagedAvatar = null;
+            renderAll();
           });
 
           $("passwordForm").addEventListener("submit", async (e) => {
@@ -544,6 +675,9 @@
                   license_number: $("drLicense").value,
                   license_expiry: $("drExpiry").value,
                   vehicle_type: $("drVehicle").value,
+                  vehicle_make: $("drMake").value,
+                  vehicle_model: $("drModel").value,
+                  vehicle_year: $("drYear").value,
                   vehicle_plate: $("drPlate").value,
                   vehicle_color: $("drColor").value,
                   emergency_contact: $("drEmergency").value,

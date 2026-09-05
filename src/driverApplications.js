@@ -122,6 +122,24 @@ export async function saveDriverApplicationRecord(app) {
   return updateApp(app);
 }
 
+export async function deleteDriverApplicationRecord(appId) {
+  const id = String(appId || "").trim();
+  if (!id) throw new Error("Application not found");
+  const existing = await getDriverApplicationById(id);
+  if (!existing) throw new Error("Application not found");
+  if (existing.status !== "rejected") {
+    throw new Error("Only rejected applications can be removed from the admin panel");
+  }
+  const pool = await ensureDb();
+  if (!pool) {
+    const i = memory.findIndex((a) => a.id === id);
+    if (i >= 0) memory.splice(i, 1);
+    return { ok: true, id };
+  }
+  await pool.query(`delete from commerce_driver_applications where id = $1`, [id]);
+  return { ok: true, id };
+}
+
 export function newDriverApplicationId() {
   return `da_${crypto.randomBytes(4).toString("hex")}`;
 }

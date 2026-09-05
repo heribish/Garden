@@ -1,8 +1,11 @@
 import crypto from "node:crypto";
 import { transitionOrder } from "./orderMachine.js";
 import { appendLedgerSale, getAllOrders, getOrder, getVendor } from "./store.js";
+import { calculateDeliveryFare, fareClassFromVehicleType } from "./fare.js";
 
 export const OFFER_SECONDS = 30;
+/** Platform share of the delivery fare (10%). Drivers earn the remainder. */
+export const DRIVER_PLATFORM_FEE_BPS = 1000;
 
 const drivers = new Map();
 const jobs = new Map();
@@ -15,6 +18,19 @@ function iso(d = new Date()) {
 function money(n) {
   if (!Number.isFinite(n)) throw new Error("Invalid amount");
   return Math.round(n);
+}
+
+/** Split customer delivery fare into platform fee (10%) and driver net pay. */
+export function splitDriverFare(grossFareTzs) {
+  const gross_fare_tzs = money(Math.max(0, Number(grossFareTzs) || 0));
+  const platform_fee_tzs = money((gross_fare_tzs * DRIVER_PLATFORM_FEE_BPS) / 10000);
+  const earnings_tzs = money(gross_fare_tzs - platform_fee_tzs);
+  return {
+    gross_fare_tzs,
+    platform_fee_tzs,
+    earnings_tzs,
+    platform_fee_pct: DRIVER_PLATFORM_FEE_BPS / 100,
+  };
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -52,6 +68,11 @@ function seedDrivers() {
     on_time: 91,
     late: 7,
     vehicle_type: id === "d1" ? "Motorbike" : "Bicycle",
+    vehicle_make: id === "d1" ? "Bajaj" : "Phoenix",
+    vehicle_model: id === "d1" ? "Boxer" : "City",
+    vehicle_year: id === "d1" ? 2019 : 2021,
+    vehicle_plate: id === "d1" ? "T 123 ABC" : null,
+    vehicle_color: id === "d1" ? "Red" : "Black",
     suspended: false,
     flagged_for_review: false,
     complaint_count: id === "d2" ? 2 : 0,
@@ -83,7 +104,7 @@ export function getDriver(id) {
 }
 
 /** Create a driver record when someone signs up as a driver. */
-export function provisionDriverForSignup({ name, phone }) {
+export function provisionDriverForSignup({ name, phone, vehicle_type }) {
   const id = `d_${crypto.randomBytes(3).toString("hex")}`;
   const row = {
     id,
@@ -103,7 +124,12 @@ export function provisionDriverForSignup({ name, phone }) {
     deliveries_completed: 0,
     on_time: 0,
     late: 0,
-    vehicle_type: "Motorbike",
+    vehicle_type: String(vehicle_type || "Motorbike").trim() || "Motorbike",
+    vehicle_make: null,
+    vehicle_model: null,
+    vehicle_year: null,
+    vehicle_plate: null,
+    vehicle_color: null,
     suspended: false,
     flagged_for_review: false,
     complaint_count: 0,
@@ -118,13 +144,124 @@ export function setDriverVehicleMeta(driverId, meta) {
   d.verification = {
     plate: meta.plate || null,
     color: meta.color || null,
+    make: meta.make || null,
+    model: meta.model || null,
+    year: meta.year != null ? meta.year : null,
     license_number: meta.license_number || null,
     license_expiry: meta.license_expiry || null,
     national_id: meta.national_id || null,
     verified_at: meta.verified_at || iso(),
   };
   if (meta.plate) d.vehicle_plate = meta.plate;
+  if (meta.color) d.vehicle_color = meta.color;
+  if (meta.make) d.vehicle_make = meta.make;
+  if (meta.model) d.vehicle_model = meta.model;
+  if (meta.year != null) d.vehicle_year = meta.year;
   return d;
+}
+
+const VEHICLE_TYPES = new Set(["Boda Boda", "Motorbike", "Bicycle", "Bajaji", "Car", "Van"]);
+
+function parseVehicleYear(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === "") return null;
+  const y = Number(raw);
+  const max = new Date().getFullYear() + 1;
+  if (!Number.isInteger(y) || y < 1980 || y > max) {
+    throw new Error(`Year made must be between 1980 and ${max}`);
+  }
+  return y;
+}
+
+/** Update vehicle details for a verified driver (self-serve or admin). */
+export function updateDriverVehicle(driverId, patch = {}) {
+  const d = drivers.get(driverId);
+  if (!d) throw new Error("Driver not found");
+
+  if (patch.vehicle_type != null) {
+    const type = String(patch.vehicle_type || "").trim();
+    if (!VEHICLE_TYPES.has(type)) throw new Error("Invalid vehicle type");
+    d.vehicle_type = type;
+  }
+
+  if (patch.vehicle_make !== undefined) {
+    const make = String(patch.vehicle_make || "").trim();
+    if (make.length < 2) throw new Error("Vehicle make is required (e.g. Bajaj, Toyota)");
+    d.vehicle_make = make;
+  }
+
+  if (patch.vehicle_model !== undefined) {
+    const model = String(patch.vehicle_model || "").trim();
+    if (model.length < 1) throw new Error("Vehicle model is required (e.g. Boxer, Hilux)");
+    d.vehicle_model = model;
+  }
+
+  if (patch.vehicle_year !== undefined) {
+    const year = parseVehicleYear(patch.vehicle_year);
+    if (year == null) throw new Error("Year made is required");
+    d.vehicle_year = year;
+  }
+
+  if (patch.vehicle_plate !== undefined) {
+    const plate = String(patch.vehicle_plate || "").trim().toUpperCase();
+    if (plate.length < 3) throw new Error("Vehicle plate number is required");
+    d.vehicle_plate = plate;
+  }
+
+  if (patch.vehicle_color !== undefined) {
+    d.vehicle_color = String(patch.vehicle_color || "").trim() || null;
+  }
+
+  const license_number =
+    patch.license_number !== undefined
+      ? String(patch.license_number || "").trim()
+      : d.verification?.license_number || null;
+  if (patch.license_number !== undefined && (!license_number || license_number.length < 4)) {
+    throw new Error("Driving licence number is required");
+  }
+
+  let license_expiry =
+    patch.license_expiry !== undefined
+      ? String(patch.license_expiry || "").trim()
+      : d.verification?.license_expiry || null;
+  if (patch.license_expiry !== undefined) {
+    if (!license_expiry || !/^\d{4}-\d{2}-\d{2}$/.test(license_expiry)) {
+      throw new Error("Licence expiry must be YYYY-MM-DD");
+    }
+  }
+
+  d.verification = {
+    ...(d.verification || {}),
+    plate: d.vehicle_plate || d.verification?.plate || null,
+    color: d.vehicle_color || d.verification?.color || null,
+    make: d.vehicle_make || d.verification?.make || null,
+    model: d.vehicle_model || d.verification?.model || null,
+    year: d.vehicle_year ?? d.verification?.year ?? null,
+    license_number: license_number || d.verification?.license_number || null,
+    license_expiry: license_expiry || d.verification?.license_expiry || null,
+    national_id: d.verification?.national_id || null,
+    verified_at: d.verification?.verified_at || iso(),
+    updated_at: iso(),
+  };
+  return publicDriverProfile(d);
+}
+
+export function publicDriverProfile(d) {
+  if (!d) return null;
+  return {
+    id: d.id,
+    name: d.name,
+    phone: d.phone,
+    online: d.online,
+    vehicle_type: d.vehicle_type || null,
+    vehicle_make: d.vehicle_make || d.verification?.make || null,
+    vehicle_model: d.vehicle_model || d.verification?.model || null,
+    vehicle_year: d.vehicle_year ?? d.verification?.year ?? null,
+    vehicle_plate: d.vehicle_plate || d.verification?.plate || null,
+    vehicle_color: d.vehicle_color || d.verification?.color || null,
+    license_number: d.verification?.license_number || null,
+    license_expiry: d.verification?.license_expiry || null,
+    rating_avg: d.rating_avg,
+  };
 }
 
 export function listDrivers() {
@@ -142,6 +279,13 @@ export function getDriversForAdmin() {
     complaint_count: d.complaint_count,
     rating_avg: d.rating_avg,
     vehicle_type: d.vehicle_type,
+    vehicle_make: d.vehicle_make || d.verification?.make || null,
+    vehicle_model: d.vehicle_model || d.verification?.model || null,
+    vehicle_year: d.vehicle_year ?? d.verification?.year ?? null,
+    vehicle_plate: d.vehicle_plate || d.verification?.plate || null,
+    vehicle_color: d.vehicle_color || d.verification?.color || null,
+    license_number: d.verification?.license_number || null,
+    license_expiry: d.verification?.license_expiry || null,
     lat: d.lat,
     lng: d.lng,
     last_seen_at: d.last_seen_at,
@@ -307,8 +451,12 @@ function clearJobTimer(job) {
   }
 }
 
-function estimateEarnings(distanceKm) {
-  return money(3200 + Math.min(25, Math.max(0, distanceKm)) * 420);
+function estimateEarnings(distanceKm, vehicleType) {
+  const fare = calculateDeliveryFare({
+    distance_km: distanceKm,
+    vehicle_class: fareClassFromVehicleType(vehicleType),
+  });
+  return splitDriverFare(fare.fare_tzs).earnings_tzs;
 }
 
 function estimateEtaMin(distanceKm, avgKmh = 22) {
@@ -362,7 +510,17 @@ export function startDispatchForOrder(order) {
   const otp = mkOtp();
   order.delivery_otp = otp;
   const jobId = `job_${crypto.randomBytes(6).toString("hex")}`;
-  const earnings = estimateEarnings(distShopToCust + 1);
+  const grossFare =
+    order.delivery_fare_tzs != null && order.delivery_fare_tzs > 0
+      ? money(order.delivery_fare_tzs)
+      : (() => {
+          const fare = calculateDeliveryFare({
+            distance_km: distShopToCust,
+            vehicle_class: fareClassFromVehicleType(null),
+          });
+          return money(fare.fare_tzs);
+        })();
+  const split = splitDriverFare(grossFare);
   const job = {
     id: jobId,
     order_id: order.id,
@@ -376,9 +534,13 @@ export function startDispatchForOrder(order) {
     skipped_driver_ids: [],
     pickup: { lat: pickupLat, lng: pickupLng, label: v.pickup_label || "Shop" },
     dropoff: { lat: dropLat, lng: dropLng, label: order.dropoff_label || "Customer" },
-    distance_shop_customer_km: Math.round(distShopToCust * 100) / 100,
-    eta_shop_to_customer_min: estimateEtaMin(distShopToCust),
-    earnings_tzs: earnings,
+    distance_shop_customer_km: order.delivery_distance_km ?? Math.round(distShopToCust * 100) / 100,
+    eta_shop_to_customer_min: order.delivery_eta_min ?? estimateEtaMin(distShopToCust),
+    gross_fare_tzs: split.gross_fare_tzs,
+    platform_fee_tzs: split.platform_fee_tzs,
+    platform_fee_pct: split.platform_fee_pct,
+    earnings_tzs: split.earnings_tzs,
+    fare_basis: order.delivery_fare_basis || "LATRA motorcycle/taxi hire guide (mid-band)",
     created_at: iso(),
     promised_delivery_at: null,
     pickup_confirmed_at: null,
@@ -450,6 +612,9 @@ export function getCurrentOffer(driverId) {
     distance_to_pickup_km: Math.round(distToPickup * 100) / 100,
     eta_to_pickup_min: etaToPickupMin,
     earnings_tzs: best.earnings_tzs,
+    gross_fare_tzs: best.gross_fare_tzs ?? best.earnings_tzs,
+    platform_fee_tzs: best.platform_fee_tzs ?? 0,
+    platform_fee_pct: best.platform_fee_pct ?? DRIVER_PLATFORM_FEE_BPS / 100,
     nearest: true,
   };
 }
@@ -586,6 +751,9 @@ export function getDriverRouteQueue(driverId) {
       distance_to_pickup_km: Math.round(distPickup * 100) / 100,
       eta_to_pickup_min: estimateEtaMin(distPickup, 18),
       earnings_tzs: job.earnings_tzs,
+      gross_fare_tzs: job.gross_fare_tzs ?? job.earnings_tzs,
+      platform_fee_tzs: job.platform_fee_tzs ?? 0,
+      platform_fee_pct: job.platform_fee_pct ?? DRIVER_PLATFORM_FEE_BPS / 100,
     });
   }
   upcoming.sort((a, b) => a.distance_to_pickup_km - b.distance_to_pickup_km);
@@ -670,14 +838,22 @@ export function confirmDelivery(driverId, jobId, { proof_type, otp, photo_data_u
   }
   transitionOrder(order, "delivered");
   order.delivered_at = iso(new Date());
-  appendLedgerSale(order.vendor_id, order.id, order.total_tzs, iso(new Date()));
+  const vendorSale = order.subtotal_tzs != null ? order.subtotal_tzs : order.total_tzs;
+  appendLedgerSale(order.vendor_id, order.id, vendorSale, iso(new Date()));
   driverLedger.push({
     id: `dled_${crypto.randomBytes(5).toString("hex")}`,
     driver_id: driverId,
     type: "delivery_fee",
     amount_tzs: job.earnings_tzs,
     created_at: iso(),
-    meta: { order_id: order.id, job_id: job.id },
+    meta: {
+      order_id: order.id,
+      job_id: job.id,
+      distance_km: job.distance_shop_customer_km,
+      gross_fare_tzs: job.gross_fare_tzs ?? job.earnings_tzs,
+      platform_fee_tzs: job.platform_fee_tzs ?? 0,
+      platform_fee_pct: job.platform_fee_pct ?? DRIVER_PLATFORM_FEE_BPS / 100,
+    },
   });
   return { job, order, on_time: onTime };
 }
@@ -736,12 +912,26 @@ export function getDriverHistory(driverId) {
   return driverLedger
     .filter((l) => l.driver_id === driverId && l.type === "delivery_fee")
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    .map((l) => ({
-      id: l.id,
-      created_at: l.created_at,
-      amount_tzs: l.amount_tzs,
-      order_id: l.meta?.order_id,
-    }));
+    .map((l) => {
+      const net = money(l.amount_tzs || 0);
+      const gross = money(l.meta?.gross_fare_tzs ?? Math.round(net / 0.9));
+      const fee =
+        l.meta?.platform_fee_tzs != null
+          ? money(l.meta.platform_fee_tzs)
+          : money(gross - net);
+      const pct = l.meta?.platform_fee_pct ?? DRIVER_PLATFORM_FEE_BPS / 100;
+      return {
+        id: l.id,
+        created_at: l.created_at,
+        amount_tzs: net,
+        earnings_tzs: net,
+        gross_fare_tzs: gross,
+        platform_fee_tzs: fee,
+        platform_fee_pct: pct,
+        order_id: l.meta?.order_id,
+        job_id: l.meta?.job_id || null,
+      };
+    });
 }
 
 export function getDriverPerformance(driverId) {
@@ -768,15 +958,209 @@ export function requestDriverPayout(driverId, body) {
   if (amount <= 0) throw new Error("Invalid amount");
   const e = getDriverEarnings(driverId);
   if (e.available_balance_tzs < amount) throw new Error("Insufficient balance");
+  const id = `dpo_${crypto.randomBytes(5).toString("hex")}`;
   driverLedger.push({
-    id: `dpo_${crypto.randomBytes(5).toString("hex")}`,
+    id,
     driver_id: driverId,
     type: "payout",
     amount_tzs: -amount,
     created_at: iso(),
     meta: { method: String(body.method || "mpesa"), destination: String(body.destination || "") },
   });
-  return { ok: true, amount_tzs: amount };
+  return { ok: true, id, amount_tzs: amount };
+}
+
+/* ---------------------------------------------------------------------------
+ * End-of-day driver payouts — auto request = exact net earnings for that UTC day
+ * ------------------------------------------------------------------------- */
+/** @type {Map<string, object>} */
+const driverPaymentRequests = new Map();
+
+function utcDayKey(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+
+function publicDriverPaymentRequest(r) {
+  if (!r) return null;
+  const d = drivers.get(r.driver_id);
+  return {
+    id: r.id,
+    driver_id: r.driver_id,
+    driver_name: d ? d.name : r.driver_id,
+    amount_tzs: r.amount_tzs,
+    gross_fare_tzs: r.gross_fare_tzs ?? null,
+    platform_fees_tzs: r.platform_fees_tzs ?? null,
+    deliveries: r.deliveries ?? 0,
+    reason: r.reason,
+    method: r.method,
+    due_label: r.due_label,
+    status: r.status,
+    reference: r.reference || null,
+    created_at: r.created_at,
+    paid_at: r.paid_at || null,
+    direction: "to_driver",
+    day_key: r.day_key || null,
+    auto: Boolean(r.auto),
+  };
+}
+
+/** Net driving earnings for one driver on a UTC calendar day. */
+export function getDriverDayEarnings(driverId, dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  let net_tzs = 0;
+  let gross_tzs = 0;
+  let fee_tzs = 0;
+  let deliveries = 0;
+  for (const l of driverLedger) {
+    if (l.driver_id !== driverId || l.type !== "delivery_fee") continue;
+    if (String(l.created_at || "").slice(0, 10) !== day) continue;
+    net_tzs += l.amount_tzs || 0;
+    gross_tzs += l.meta?.gross_fare_tzs ?? l.amount_tzs ?? 0;
+    fee_tzs += l.meta?.platform_fee_tzs ?? 0;
+    deliveries += 1;
+  }
+  return {
+    driver_id: driverId,
+    day_key: day,
+    net_tzs: money(net_tzs),
+    gross_tzs: money(gross_tzs),
+    fee_tzs: money(fee_tzs),
+    deliveries,
+  };
+}
+
+export function listDriversDayEarnings(dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  const out = [];
+  for (const d of drivers.values()) {
+    const row = getDriverDayEarnings(d.id, day);
+    if (row.deliveries <= 0 && row.net_tzs <= 0) continue;
+    out.push({
+      ...row,
+      driver_name: d.name,
+      settlement_method: "mpesa",
+    });
+  }
+  out.sort((a, b) => b.net_tzs - a.net_tzs);
+  return out;
+}
+
+/**
+ * Auto end-of-day: each driver with deliveries that day gets a payout request
+ * for their exact net earnings (after platform fee). Idempotent per driver + day.
+ */
+export function generateEndOfDayDriverPayoutRequests(dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  const created = [];
+  const skipped = [];
+  for (const row of listDriversDayEarnings(day)) {
+    if (!(row.net_tzs > 0)) {
+      skipped.push({ driver_id: row.driver_id, reason: "no_net" });
+      continue;
+    }
+    const existing = [...driverPaymentRequests.values()].find(
+      (r) =>
+        r.driver_id === row.driver_id &&
+        r.day_key === day &&
+        r.direction === "to_driver" &&
+        r.status !== "cancelled"
+    );
+    if (existing) {
+      skipped.push({ driver_id: row.driver_id, reason: "already_exists", request_id: existing.id });
+      continue;
+    }
+    const id = `dpr_${crypto.randomBytes(5).toString("hex")}`;
+    const req = {
+      id,
+      driver_id: row.driver_id,
+      amount_tzs: row.net_tzs,
+      gross_fare_tzs: row.gross_tzs,
+      platform_fees_tzs: row.fee_tzs,
+      deliveries: row.deliveries,
+      reason: `End-of-day driver payout · ${day}`,
+      method: String(row.settlement_method || "mpesa"),
+      due_label: "End of day",
+      status: "pending",
+      reference: null,
+      created_at: iso(),
+      paid_at: null,
+      direction: "to_driver",
+      day_key: day,
+      auto: true,
+    };
+    driverPaymentRequests.set(id, req);
+    created.push(publicDriverPaymentRequest(req));
+  }
+  return {
+    day_key: day,
+    created,
+    skipped,
+    drivers: listDriversDayEarnings(day),
+    requests: listAllDriverPaymentRequests().filter((r) => r.day_key === day && r.direction === "to_driver"),
+  };
+}
+
+export function getEndOfDayDriverFinanceSnapshot(dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  const driversRows = listDriversDayEarnings(day);
+  const requests = listAllDriverPaymentRequests().filter((r) => r.day_key === day && r.direction === "to_driver");
+  const total_net = driversRows.reduce((s, v) => s + v.net_tzs, 0);
+  const total_gross = driversRows.reduce((s, v) => s + v.gross_tzs, 0);
+  return {
+    day_key: day,
+    drivers: driversRows,
+    requests,
+    totals: {
+      drivers_with_trips: driversRows.length,
+      gross_fares_tzs: money(total_gross),
+      net_payouts_tzs: money(total_net),
+      pending_requests: requests.filter((r) => r.status === "pending").length,
+    },
+  };
+}
+
+export function getDriverPaymentRequest(reqId) {
+  return driverPaymentRequests.get(reqId) || null;
+}
+
+/** Admin pays an end-of-day driver payout request (platform → driver). */
+export function payDriverEndOfDayRequest(reqId, body = {}) {
+  const r = driverPaymentRequests.get(reqId);
+  if (!r) throw new Error("Payment request not found");
+  if (r.direction !== "to_driver") throw new Error("Not a driver payout request");
+  if (r.status === "cancelled") throw new Error("Payment request was cancelled");
+  if (r.status === "paid") return { request: publicDriverPaymentRequest(r), payout: null, already: true };
+
+  const payout = requestDriverPayout(r.driver_id, {
+    amount_tzs: r.amount_tzs,
+    method: body.method || r.method || "mpesa",
+    destination: body.destination || "",
+  });
+  r.status = "paid";
+  r.reference = String(body.reference || payout.id || "").trim() || payout.id;
+  r.paid_at = iso();
+  return { request: publicDriverPaymentRequest(r), payout };
+}
+
+export function cancelDriverPaymentRequest(reqId) {
+  const r = driverPaymentRequests.get(reqId);
+  if (!r) throw new Error("Payment request not found");
+  if (r.status === "paid") throw new Error("Already paid");
+  r.status = "cancelled";
+  return publicDriverPaymentRequest(r);
+}
+
+export function listDriverPaymentRequests(driverId) {
+  return [...driverPaymentRequests.values()]
+    .filter((r) => r.driver_id === driverId)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .map(publicDriverPaymentRequest);
+}
+
+export function listAllDriverPaymentRequests() {
+  return [...driverPaymentRequests.values()]
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .map(publicDriverPaymentRequest);
 }
 
 export function findJobByOrderId(orderId) {

@@ -77,6 +77,9 @@ async function ensureDb() {
       alter table auth_users add column if not exists driver_verification_status text default 'none';
     `);
     await dbPool.query(`
+      alter table auth_users add column if not exists avatar_url text;
+    `);
+    await dbPool.query(`
       create table if not exists auth_sessions (
         id text primary key,
         user_id text not null references auth_users(id) on delete cascade,
@@ -191,12 +194,25 @@ function publicUser(user) {
     phone: user.phone || null,
     email: user.email || null,
     locale: user.locale || "en",
+    avatar_url: user.avatar_url || null,
     vendor_id: user.vendor_id || null,
     driver_id: user.driver_id || null,
     driver_verification_status: driverVerificationStatus(user),
     capabilities: publicCapabilities(user),
     created_at: user.created_at,
   };
+}
+
+/** Compact JPEG/PNG data URLs only (same pattern as product photos). */
+export function normalizeAvatarUrl(v) {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  const s = String(v);
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(s)) {
+    throw new Error("Photo must be a JPEG, PNG, or WebP image");
+  }
+  if (s.length > 220000) throw new Error("Photo is too large — try a smaller image");
+  return s;
 }
 
 export function getUserRecord(userId) {
@@ -211,7 +227,7 @@ export async function getUserRecordAsync(userId) {
   const pool = await ensureDb();
   if (!pool) return null;
   const r = await pool.query(
-    `select id, role, name, phone, email, locale, vendor_id, driver_id, driver_verification_status, password_hash, created_at from auth_users where id = $1 limit 1`,
+    `select id, role, name, phone, email, locale, avatar_url, vendor_id, driver_id, driver_verification_status, password_hash, created_at from auth_users where id = $1 limit 1`,
     [userId]
   );
   const row = r.rows[0];
@@ -228,7 +244,7 @@ export async function setUserDriverState(userId, { driver_id, driver_verificatio
   const pool = await ensureDb();
   if (pool) {
     const existingRes = await pool.query(
-      `select id, role, name, phone, email, locale, vendor_id, driver_id, driver_verification_status, created_at from auth_users where id = $1`,
+      `select id, role, name, phone, email, locale, avatar_url, vendor_id, driver_id, driver_verification_status, created_at from auth_users where id = $1`,
       [id]
     );
     const existing = existingRes.rows[0];
@@ -274,7 +290,7 @@ export async function setUserVendorId(userId, vendorId) {
       vid,
     ]);
     const r = await pool.query(
-      `select id, role, name, phone, email, locale, vendor_id, driver_id, created_at from auth_users where id = $1`,
+      `select id, role, name, phone, email, locale, avatar_url, vendor_id, driver_id, created_at from auth_users where id = $1`,
       [id]
     );
     return publicUser({ ...r.rows[0], driver_verification_status: r.rows[0].driver_id ? "verified" : "none" });
@@ -352,6 +368,7 @@ export async function createUser(input) {
     driver_id,
     driver_verification_status,
     password_hash: hashPassword(password),
+    avatar_url: null,
     created_at: new Date().toISOString(),
   };
   if (pool) {
@@ -395,10 +412,11 @@ export async function updateUserProfile(userId, patch) {
   const nextPhone = patch.phone !== undefined ? normalizePhone(patch.phone) : undefined;
   const nextEmail = patch.email !== undefined ? normalizeEmail(patch.email) : undefined;
   const nextLocale = patch.locale != null ? String(patch.locale).trim() : undefined;
+  const nextAvatar = patch.avatar_url !== undefined ? normalizeAvatarUrl(patch.avatar_url) : undefined;
   const pool = await ensureDb();
   if (pool) {
     const existingRes = await pool.query(
-      `select id, role, name, phone, email, locale, vendor_id, driver_id, created_at from auth_users where id = $1 limit 1`,
+      `select id, role, name, phone, email, locale, avatar_url, vendor_id, driver_id, created_at from auth_users where id = $1 limit 1`,
       [id]
     );
     const existing = existingRes.rows[0];
@@ -409,12 +427,13 @@ export async function updateUserProfile(userId, patch) {
       phone: nextPhone !== undefined ? nextPhone || null : existing.phone,
       email: nextEmail !== undefined ? nextEmail || null : existing.email,
       locale: nextLocale !== undefined ? (nextLocale || existing.locale || "en") : existing.locale,
+      avatar_url: nextAvatar !== undefined ? nextAvatar : existing.avatar_url || null,
     };
     if (!updated.phone && !updated.email) throw new Error("phone or email required");
     try {
       await pool.query(
-        `update auth_users set name = $2, phone = $3, email = $4, locale = $5 where id = $1`,
-        [id, updated.name, updated.phone, updated.email, updated.locale]
+        `update auth_users set name = $2, phone = $3, email = $4, locale = $5, avatar_url = $6 where id = $1`,
+        [id, updated.name, updated.phone, updated.email, updated.locale, updated.avatar_url]
       );
     } catch (e) {
       const msg = String(e.message || e);
@@ -433,6 +452,7 @@ export async function updateUserProfile(userId, patch) {
     phone: nextPhone !== undefined ? nextPhone || null : existing.phone,
     email: nextEmail !== undefined ? nextEmail || null : existing.email,
     locale: nextLocale !== undefined ? nextLocale || existing.locale || "en" : existing.locale,
+    avatar_url: nextAvatar !== undefined ? nextAvatar : existing.avatar_url || null,
   };
   if (!updated.phone && !updated.email) throw new Error("phone or email required");
   assertUniqueIdentityForUpdate(id, { phone: updated.phone, email: updated.email });
@@ -475,7 +495,7 @@ export async function authenticateUser({ phone, email, password }) {
   if (pool) {
     const r = await pool.query(
       `
-        select id, role, name, phone, email, locale, vendor_id, driver_id, password_hash, created_at
+        select id, role, name, phone, email, locale, avatar_url, vendor_id, driver_id, driver_verification_status, password_hash, created_at
         from auth_users
         where ($1 <> '' and (phone = $1 or right(regexp_replace(phone, '\\D', '', 'g'), 9) = $3))
            or ($2 <> '' and email = $2)
@@ -534,7 +554,7 @@ export async function getUserBySession(sessionId) {
   if (pool) {
     const r = await pool.query(
       `
-        select s.id, s.user_id, s.expires_at, u.id as uid, u.role, u.name, u.phone, u.email, u.locale, u.vendor_id, u.driver_id, u.driver_verification_status, u.created_at
+        select s.id, s.user_id, s.expires_at, u.id as uid, u.role, u.name, u.phone, u.email, u.locale, u.avatar_url, u.vendor_id, u.driver_id, u.driver_verification_status, u.created_at
         from auth_sessions s
         join auth_users u on u.id = s.user_id
         where s.id = $1
@@ -558,6 +578,7 @@ export async function getUserBySession(sessionId) {
       phone: row.phone,
       email: row.email,
       locale: row.locale,
+      avatar_url: row.avatar_url || null,
       vendor_id: row.vendor_id,
       driver_id: row.driver_id,
       driver_verification_status: row.driver_verification_status,

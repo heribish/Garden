@@ -94,16 +94,30 @@ test("vendor and driver signup intents create shopper accounts with applications
       method: "POST",
       body: JSON.stringify({
         name: "Driver One",
+        phone: "255744888002",
         email: "new-driver@garden.local",
         password: "Password123!",
         role: "driver",
+        national_id: "19900101123456789012",
+        license_number: "DL-123456",
+        license_expiry: "2028-12-31",
+        vehicle_type: "Boda Boda",
+        vehicle_make: "Bajaj",
+        vehicle_model: "Boxer",
+        vehicle_year: 2020,
+        vehicle_plate: "T123ABC",
+        vehicle_color: "Red",
+        emergency_contact: "255744000000",
       }),
     });
     assert.equal(r.status, 201);
     const driverBody = await r.json();
     assert.equal(driverBody.user.role, "shopper");
     assert.equal(driverBody.user.driver_id, null);
-    assert.equal(driverBody.next_step, "complete_driver_verification");
+    assert.equal(driverBody.next_step, "driver_pending_approval");
+    assert.ok(driverBody.driver_application);
+    assert.equal(driverBody.driver_application.status, "pending");
+    assert.equal(driverBody.driver_application.user_id, driverBody.user.id);
 
     r = await anon.request("/api/auth/signup", {
       method: "POST",
@@ -172,6 +186,9 @@ test("account hub exposes orders and driver verification flow", async () => {
         license_number: "DL-998877",
         license_expiry: "2028-12-31",
         vehicle_type: "Motorbike",
+        vehicle_make: "Honda",
+        vehicle_model: "CB125",
+        vehicle_year: 2019,
         vehicle_plate: "T123ABC",
         vehicle_color: "Red",
       }),
@@ -314,6 +331,206 @@ test("vendor applications can be submitted and approved with vendor account prov
     assert.equal(approveBody.application.status, "approved");
     assert.equal(approveBody.vendor_user.role, "vendor");
     assert.equal(approveBody.vendor_user.vendor_id, approveBody.vendor_id);
+  } finally {
+    child.kill();
+  }
+});
+
+test("admin end-of-day generates vendor payout requests from exact day sales", async () => {
+  const { child, baseUrl } = await startServer();
+  try {
+    const admin = createClient(baseUrl);
+    let r = await admin.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "admin@garden.local", password: "admin1234" }),
+    });
+    assert.equal(r.status, 200);
+
+    r = await admin.request("/api/admin/finance/end-of-day/generate", {
+      method: "POST",
+      body: "{}",
+    });
+    assert.equal(r.status, 200);
+    const gen = await r.json();
+    assert.ok(gen.day_key);
+    assert.ok(Array.isArray(gen.vendors));
+    assert.ok(Array.isArray(gen.requests));
+    assert.ok(Array.isArray(gen.drivers));
+    assert.ok(Array.isArray(gen.driver_requests));
+
+    r = await admin.request(`/api/admin/finance/end-of-day?day=${encodeURIComponent(gen.day_key)}`);
+    assert.equal(r.status, 200);
+    const snap = await r.json();
+    assert.equal(snap.day_key, gen.day_key);
+    assert.ok(snap.driver_totals);
+    assert.ok(Array.isArray(snap.drivers));
+
+    // Second generate is idempotent — no duplicate pending for same vendor/driver/day
+    r = await admin.request("/api/admin/finance/end-of-day/generate", {
+      method: "POST",
+      body: JSON.stringify({ day: gen.day_key }),
+    });
+    assert.equal(r.status, 200);
+    const again = await r.json();
+    assert.equal((again.vendor_created || []).length, 0);
+    assert.equal((again.driver_created || []).length, 0);
+    assert.equal((again.created || []).length, 0);
+  } finally {
+    child.kill();
+  }
+});
+
+test("admin can configure bank checkout settings", async () => {
+  const { child, baseUrl } = await startServer();
+  try {
+    const admin = createClient(baseUrl);
+    let r = await admin.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "admin@garden.local", password: "admin1234" }),
+    });
+    assert.equal(r.status, 200);
+
+    r = await admin.request("/api/admin/settings/bank", {
+      method: "PATCH",
+      body: JSON.stringify({
+        enabled: true,
+        bank_name: "CRDB Bank",
+        account_name: "Garden Tanzania Ltd",
+        account_number: "0150123456789",
+        branch: "Kariakoo",
+      }),
+    });
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.settings.checkout_available, true);
+    assert.equal(body.settings.bank_name, "CRDB Bank");
+
+    const pub = await admin.request("/api/public-config");
+    assert.equal(pub.status, 200);
+    const cfg = await pub.json();
+    assert.equal(cfg.bank_enabled, true);
+    assert.equal(cfg.bank.account_number, "0150123456789");
+  } finally {
+    child.kill();
+  }
+});
+
+test("admin can add and remove delivery cities for customer checkout", async () => {
+  const { child, baseUrl } = await startServer();
+  try {
+    const admin = createClient(baseUrl);
+    let r = await admin.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "admin@garden.local", password: "admin1234" }),
+    });
+    assert.equal(r.status, 200);
+
+    r = await admin.request("/api/admin/settings/delivery-cities", {
+      method: "POST",
+      body: JSON.stringify({
+        label: "Testville",
+        id: "testville",
+        lat: -6.5,
+        lng: 36.5,
+      }),
+    });
+    assert.equal(r.status, 201);
+    const added = await r.json();
+    assert.equal(added.city.id, "testville");
+
+    r = await admin.request("/api/delivery/cities");
+    assert.equal(r.status, 200);
+    const pub = await r.json();
+    assert.ok(pub.cities.some((c) => c.id === "testville"));
+
+    r = await admin.request("/api/admin/settings/delivery-cities/testville", { method: "DELETE" });
+    assert.equal(r.status, 200);
+
+    r = await admin.request("/api/delivery/cities");
+    const after = await r.json();
+    assert.ok(!after.cities.some((c) => c.id === "testville"));
+
+    r = await admin.request("/api/admin/settings/delivery-cities/dar", { method: "DELETE" });
+    assert.equal(r.status, 400);
+  } finally {
+    child.kill();
+  }
+});
+
+test("admin can configure M-Pesa payout account for daily vendor/driver pays", async () => {
+  const { child, baseUrl } = await startServer();
+  try {
+    const admin = createClient(baseUrl);
+    let r = await admin.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "admin@garden.local", password: "admin1234" }),
+    });
+    assert.equal(r.status, 200);
+
+    r = await admin.request("/api/admin/settings/payout-mpesa", {
+      method: "PATCH",
+      body: JSON.stringify({
+        enabled: true,
+        account_name: "Garden Float",
+        account_type: "till",
+        account_number: "555111",
+        notes: "Daily vendor and driver settlements",
+      }),
+    });
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.settings.configured, true);
+    assert.equal(body.settings.account_number, "555111");
+    assert.ok(body.summary.configured);
+    assert.match(body.summary.label, /Garden Float/);
+
+    r = await admin.request("/api/admin/finance/end-of-day");
+    assert.equal(r.status, 200);
+    const snap = await r.json();
+    assert.equal(snap.payout_mpesa.configured, true);
+    assert.equal(snap.payout_mpesa.account_number, "555111");
+  } finally {
+    child.kill();
+  }
+});
+
+test("admin can read and update M-Pesa settings", async () => {
+  const { child, baseUrl } = await startServer();
+  try {
+    const anon = createClient(baseUrl);
+    const blocked = await anon.request("/api/admin/settings/mpesa");
+    assert.equal(blocked.status, 401);
+
+    const admin = createClient(baseUrl);
+    let r = await admin.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: "admin@garden.local", password: "admin1234" }),
+    });
+    assert.equal(r.status, 200);
+
+    r = await admin.request("/api/admin/settings/mpesa");
+    assert.equal(r.status, 200);
+    const initial = await r.json();
+    assert.ok(initial.settings);
+    assert.ok("callback_url" in initial.settings);
+
+    r = await admin.request("/api/admin/settings/mpesa", {
+      method: "PATCH",
+      body: JSON.stringify({
+        enabled: true,
+        short_code: "174379",
+        environment: "sandbox",
+      }),
+    });
+    assert.equal(r.status, 200);
+    const updated = await r.json();
+    assert.equal(updated.settings.short_code, "174379");
+    assert.equal(updated.settings.enabled, true);
+
+    r = await admin.request("/api/admin/settings/mpesa/test", { method: "POST", body: "{}" });
+    assert.equal(r.status, 200);
+    const testBody = await r.json();
+    assert.ok(Array.isArray(testBody.validation.issues));
   } finally {
     child.kill();
   }

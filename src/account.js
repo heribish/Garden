@@ -8,6 +8,7 @@ import {
   listDriverApplications,
   newDriverApplicationId,
   saveDriverApplicationRecord,
+  deleteDriverApplicationRecord,
 } from "./driverApplications.js";
 
 function iso(d = new Date()) {
@@ -33,15 +34,29 @@ export async function createDriverApplication(input) {
 
   const national_id = String(input.national_id || "").trim();
   const license_number = String(input.license_number || "").trim();
-  const license_expiry = String(input.license_expiry || "").trim();
+  const license_expiry = String(input.license_expiry || "").trim() || (() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
   const vehicle_type = String(input.vehicle_type || "").trim();
   const vehicle_plate = String(input.vehicle_plate || "").trim();
+  const vehicle_make = String(input.vehicle_make || "").trim();
+  const vehicle_model = String(input.vehicle_model || "").trim();
+  const vehicle_year_raw = input.vehicle_year;
   if (!national_id || national_id.length < 5) throw new Error("National ID is required");
   if (!license_number || license_number.length < 4) throw new Error("Driving licence number is required");
-  if (!license_expiry || !/^\d{4}-\d{2}-\d{2}$/.test(license_expiry)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(license_expiry)) {
     throw new Error("Licence expiry must be YYYY-MM-DD");
   }
   if (!vehicle_type) throw new Error("Vehicle type is required");
+  if (!vehicle_make || vehicle_make.length < 2) throw new Error("Vehicle make is required (e.g. Bajaj, Toyota)");
+  if (!vehicle_model) throw new Error("Vehicle model is required (e.g. Boxer, Hilux)");
+  const vehicle_year = Number(vehicle_year_raw);
+  const maxYear = new Date().getFullYear() + 1;
+  if (!Number.isInteger(vehicle_year) || vehicle_year < 1980 || vehicle_year > maxYear) {
+    throw new Error(`Year made must be between 1980 and ${maxYear}`);
+  }
   if (!vehicle_plate || vehicle_plate.length < 3) throw new Error("Vehicle plate number is required");
 
   const app = {
@@ -54,6 +69,9 @@ export async function createDriverApplication(input) {
     license_number,
     license_expiry,
     vehicle_type,
+    vehicle_make,
+    vehicle_model,
+    vehicle_year,
     vehicle_plate: vehicle_plate.toUpperCase(),
     vehicle_color: String(input.vehicle_color || "").trim() || null,
     emergency_contact: String(input.emergency_contact || "").trim() || null,
@@ -82,6 +100,9 @@ export async function approveDriverApplication(appId) {
   drv.setDriverVehicleMeta(driver.id, {
     plate: app.vehicle_plate,
     color: app.vehicle_color,
+    make: app.vehicle_make,
+    model: app.vehicle_model,
+    year: app.vehicle_year,
     license_number: app.license_number,
     license_expiry: app.license_expiry,
     national_id: app.national_id,
@@ -112,6 +133,10 @@ export async function rejectDriverApplication(appId, reason) {
     driver_id: null,
   });
   return app;
+}
+
+export async function removeDriverApplication(appId) {
+  return deleteDriverApplicationRecord(appId);
 }
 
 export function listOrdersForCustomer(userId) {
@@ -161,6 +186,9 @@ export async function buildAccountProfile(user) {
     user.driver_verification_status ||
     (user.driver_id ? "verified" : driverApp?.status === "pending" ? "pending" : driverApp?.status === "approved" ? "verified" : "none");
 
+  const driverId = user.driver_id || driverApp?.driver_id || null;
+  const vehicle = driverId ? drv.publicDriverProfile(drv.getDriver(driverId)) : null;
+
   return {
     user,
     stats: {
@@ -177,8 +205,9 @@ export async function buildAccountProfile(user) {
       },
       driver: {
         status: driverStatus,
-        driver_id: user.driver_id || driverApp?.driver_id || null,
+        driver_id: driverId,
         application: driverApp,
+        vehicle,
       },
       admin: user.role === "admin",
     },

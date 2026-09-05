@@ -4,6 +4,7 @@
  */
 
 import crypto from "node:crypto";
+import { getMpesaRuntimeConfig } from "../mpesaSettings.js";
 
 export const adapters = {
   mpesa: makeAdapter("mpesa", "M-Pesa (Vodacom)"),
@@ -21,6 +22,17 @@ function makeAdapter(provider, label) {
      * Here: return instructions the demo UI can follow.
      */
     initiatePayment({ payment }) {
+      if (provider === "mpesa") {
+        const cfg = getMpesaRuntimeConfig();
+        const mode = cfg.demo_mode ? "demo STK" : cfg.environment;
+        return {
+          provider,
+          payment_id: payment.id,
+          message: `${label}: ${mode} prompt ${cfg.demo_mode ? "(simulated)" : "queued"}. Customer approves on phone.`,
+          next_step: "await_customer_approval",
+          demo_mode: cfg.demo_mode,
+        };
+      }
       return {
         provider,
         payment_id: payment.id,

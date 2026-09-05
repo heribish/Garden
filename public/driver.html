@@ -2,9 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>garden — Driver app</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="garden" />
+    <title>garden — Driver</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,76 +21,257 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
       :root {
-        font-family: var(--tz-font, "Plus Jakarta Sans", system-ui, sans-serif);
-        color: #0f172a;
-        background: #0b1220;
+        --drv-bg: #070b14;
+        --drv-surface: #111827;
+        --drv-elev: #1a2332;
+        --drv-border: rgba(148, 163, 184, 0.16);
+        --drv-text: #f1f5f9;
+        --drv-muted: #94a3b8;
+        --drv-teal: #14b8a6;
+        --drv-teal-deep: #0f766e;
+        --drv-orange: #f97316;
+        --drv-safe-b: env(safe-area-inset-bottom, 0px);
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        color: var(--drv-text);
+        background: var(--drv-bg);
+      }
+      * {
+        box-sizing: border-box;
       }
       body {
         margin: 0;
-        color: #e2e8f0;
-      }
-      header {
-        padding: 12px 16px;
-        background: #111827;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
-        justify-content: space-between;
-      }
-      h1 {
-        font-size: 1.05rem;
-        margin: 0;
+        min-height: 100dvh;
+        background:
+          radial-gradient(120% 60% at 50% -10%, rgba(15, 118, 110, 0.28), transparent 55%),
+          var(--drv-bg);
+        color: var(--drv-text);
+        padding-bottom: calc(4.25rem + var(--drv-safe-b));
       }
       a {
-        color: #7dd3fc;
+        color: var(--drv-teal);
+      }
+      .drv-top {
+        position: sticky;
+        top: 0;
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.65rem 1rem;
+        background: rgba(7, 11, 20, 0.88);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--drv-border);
+      }
+      .drv-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: inherit;
+        min-width: 0;
+      }
+      .drv-brand__mark {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        background: linear-gradient(145deg, #14b8a6, #0f766e);
+        color: #fff;
+        flex-shrink: 0;
+      }
+      .drv-brand__text {
+        min-width: 0;
+      }
+      .drv-brand__name {
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+      .drv-brand__sub {
+        font-size: 0.7rem;
+        color: var(--drv-muted);
+        margin-top: 1px;
+      }
+      .drv-top-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+      }
+      .drv-lang {
+        padding: 0.3rem 0.45rem;
+        border-radius: 8px;
+        border: 1px solid var(--drv-border);
+        background: var(--drv-elev);
+        color: var(--drv-text);
+        font: inherit;
+        font-size: 0.72rem;
+      }
+      .drv-online {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.65rem 0.35rem 0.45rem;
+        border-radius: 999px;
+        border: 1px solid var(--drv-border);
+        background: var(--drv-elev);
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .drv-online input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .drv-online__dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: #64748b;
+        box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.25);
+      }
+      .drv-online.is-on {
+        border-color: rgba(20, 184, 166, 0.45);
+        background: rgba(15, 118, 110, 0.25);
+        color: #99f6e4;
+      }
+      .drv-online.is-on .drv-online__dot {
+        background: #34d399;
+        box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.28);
+      }
+      .drv-map-wrap {
+        position: relative;
+        margin: 0.65rem 0.75rem 0;
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid var(--drv-border);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      }
+      #map {
+        height: min(42vh, 340px);
+        min-height: 220px;
+        width: 100%;
+        background: #0b1220;
+      }
+      .drv-status {
+        position: absolute;
+        left: 0.65rem;
+        right: 0.65rem;
+        bottom: 0.65rem;
+        z-index: 500;
+        padding: 0.55rem 0.75rem;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid var(--drv-border);
+        font-size: 0.8rem;
+        line-height: 1.35;
+        color: #e2e8f0;
+        pointer-events: none;
+      }
+      .drv-phase {
+        display: none;
+        margin: 0.65rem 0.75rem 0;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        width: fit-content;
+        background: rgba(249, 115, 22, 0.18);
+        color: #fdba74;
+        border: 1px solid rgba(249, 115, 22, 0.35);
+      }
+      .drv-phase.show {
+        display: inline-flex;
+      }
+      .drv-main {
+        padding: 0.75rem 0.75rem 1rem;
+      }
+      .drv-panel {
+        display: none;
+      }
+      .drv-panel.active {
+        display: block;
+        animation: drvIn 0.22s ease;
+      }
+      @keyframes drvIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .drv-card {
+        background: var(--drv-surface);
+        border: 1px solid var(--drv-border);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+      }
+      .drv-card h2 {
+        margin: 0 0 0.65rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--drv-muted);
+      }
+      .drv-card__lead {
+        margin: -0.35rem 0 0.75rem;
+        font-size: 0.8rem;
+        color: var(--drv-muted);
+        line-height: 1.4;
       }
       .row {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 0.55rem;
         align-items: center;
-      }
-      #map {
-        height: 46vh;
-        min-height: 220px;
-        width: 100%;
       }
       .route-stop {
         display: flex;
-        gap: 10px;
+        gap: 0.65rem;
         align-items: flex-start;
-        padding: 8px 0;
-        border-bottom: 1px solid #334155;
+        padding: 0.65rem 0;
+        border-bottom: 1px solid var(--drv-border);
       }
       .route-stop:last-child {
         border-bottom: none;
       }
       .route-num {
         flex-shrink: 0;
-        width: 28px;
-        height: 28px;
+        width: 1.75rem;
+        height: 1.75rem;
         border-radius: 50%;
-        background: #0d9488;
+        background: var(--drv-teal-deep);
         color: #fff;
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         display: flex;
         align-items: center;
         justify-content: center;
       }
       .route-num--current {
-        background: #f97316;
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35);
+        background: var(--drv-orange);
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
       }
       .route-num--pending {
         background: #475569;
       }
       .route-num--queue {
-        background: #1e40af;
+        background: #1e3a8a;
       }
       .map-pin-num {
-        background: #0d9488;
+        background: var(--drv-teal-deep);
         color: #fff;
         font-weight: 700;
         font-size: 12px;
@@ -98,32 +284,64 @@
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
       }
       .map-pin-num--current {
-        background: #f97316;
+        background: var(--drv-orange);
       }
       .map-pin-truck {
         font-size: 22px;
         line-height: 1;
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
       }
-      .panel {
-        padding: 12px 16px;
-        background: #1e293b;
-        border-top: 1px solid #334155;
+      .btn-nav {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        background: var(--drv-teal);
+        color: #042f2e;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.82rem;
+        padding: 0.55rem 0.85rem;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .btn-nav:hover {
+        background: #2dd4bf;
+      }
+      .btn-nav--ghost {
+        background: transparent;
+        color: #99f6e4;
+        border: 1px solid #115e59;
+      }
+      .btn-nav--ghost:hover {
+        background: #0c4a6e;
+        color: #e0f2fe;
+      }
+      .route-nav-hint {
+        margin: 0 0 0.55rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 10px;
+        background: rgba(12, 74, 110, 0.55);
+        color: #e0f2fe;
+        font-size: 0.78rem;
+        line-height: 1.35;
       }
       button,
       select {
         font: inherit;
-        padding: 8px 12px;
-        border-radius: 8px;
+        padding: 0.55rem 0.9rem;
+        border-radius: 10px;
         border: none;
         cursor: pointer;
       }
       button.primary {
-        background: #0d9488;
+        background: linear-gradient(145deg, #14b8a6, #0f766e);
         color: #fff;
+        font-weight: 600;
       }
       button.ghost {
-        background: #334155;
+        background: #243044;
         color: #e2e8f0;
       }
       button.danger {
@@ -131,41 +349,40 @@
         color: #fff;
       }
       .muted {
-        color: #94a3b8;
+        color: var(--drv-muted);
         font-size: 0.88rem;
       }
-      .modal-bg {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.65);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        padding: 16px;
+      .drv-earn-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
       }
-      .modal-bg.show {
-        display: flex;
+      .drv-earn-tile {
+        background: var(--drv-elev);
+        border: 1px solid var(--drv-border);
+        border-radius: 12px;
+        padding: 0.65rem 0.5rem;
+        text-align: center;
       }
-      .modal {
-        background: #0f172a;
-        border-radius: 14px;
-        padding: 18px;
-        max-width: 420px;
-        width: 100%;
-        border: 1px solid #334155;
+      .drv-earn-tile strong {
+        display: block;
+        font-size: 0.92rem;
+        letter-spacing: -0.02em;
+        margin-top: 0.15rem;
       }
-      .big {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #f97316;
+      .drv-earn-tile span {
+        font-size: 0.68rem;
+        color: var(--drv-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
       }
       .chart {
         display: flex;
         align-items: flex-end;
         gap: 6px;
         height: 120px;
-        margin-top: 8px;
+        margin-top: 0.35rem;
       }
       .bar-wrap {
         flex: 1;
@@ -178,108 +395,419 @@
       .bar {
         width: 100%;
         max-width: 36px;
-        background: linear-gradient(#14b8a6, #0f766e);
+        background: linear-gradient(#2dd4bf, #0f766e);
         border-radius: 4px 4px 0 0;
         min-height: 2px;
       }
       .bar-wrap small {
         font-size: 0.65rem;
-        color: #94a3b8;
+        color: var(--drv-muted);
         margin-top: 4px;
         text-align: center;
       }
-      input {
+      input,
+      .drv-field select {
         width: 100%;
         box-sizing: border-box;
-        padding: 8px;
-        border-radius: 8px;
-        border: 1px solid #475569;
+        padding: 0.55rem 0.65rem;
+        border-radius: 10px;
+        border: 1px solid #334155;
+        background: #0b1220;
+        color: var(--drv-text);
+        font: inherit;
+      }
+      .drv-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+      }
+      .drv-field label {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--drv-muted);
+        margin-bottom: 0.3rem;
+      }
+      .drv-field--full {
+        grid-column: 1 / -1;
+      }
+      .drv-profile-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .drv-tabs {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 950;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.25rem;
+        padding: 0.4rem 0.5rem calc(0.4rem + var(--drv-safe-b));
+        background: rgba(7, 11, 20, 0.94);
+        backdrop-filter: blur(14px);
+        border-top: 1px solid var(--drv-border);
+      }
+      .drv-tabs button {
+        appearance: none;
+        background: transparent;
+        color: var(--drv-muted);
+        border: none;
+        border-radius: 12px;
+        padding: 0.45rem 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+      }
+      .drv-tabs button svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.8;
+      }
+      .drv-tabs button.on {
+        color: #99f6e4;
+        background: rgba(15, 118, 110, 0.28);
+      }
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.62);
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 2000;
+        padding: 0;
+      }
+      .modal-bg.show {
+        display: flex;
+      }
+      .modal {
         background: #0f172a;
-        color: #e2e8f0;
+        border-radius: 20px 20px 0 0;
+        padding: 1.15rem 1.15rem calc(1.15rem + var(--drv-safe-b));
+        max-width: 520px;
+        width: 100%;
+        border: 1px solid var(--drv-border);
+        border-bottom: none;
+        box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.45);
+        animation: sheetUp 0.28s ease;
+      }
+      @keyframes sheetUp {
+        from {
+          transform: translateY(24px);
+          opacity: 0.6;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .big {
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: var(--drv-orange);
+      }
+      .drv-admin-select {
+        display: none;
+        margin: 0.5rem 0.75rem 0;
+        font-size: 0.75rem;
+        color: var(--drv-muted);
+      }
+      .drv-admin-select.show {
+        display: block;
+      }
+      #driverId {
+        margin-top: 0.25rem;
+        max-width: 220px;
+        background: var(--drv-elev);
+        color: var(--drv-text);
+        border: 1px solid var(--drv-border);
+      }
+      details.drv-trips summary {
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.85rem;
+        list-style: none;
+      }
+      details.drv-trips summary::-webkit-details-marker {
+        display: none;
+      }
+      #profileDetails {
+        display: contents;
+      }
+      #profileDetails > summary {
+        display: none;
+      }
+      @media (min-width: 720px) {
+        body {
+          padding-bottom: 1.5rem;
+        }
+        .drv-shell {
+          max-width: 720px;
+          margin: 0 auto;
+        }
+        .drv-tabs {
+          left: 50%;
+          transform: translateX(-50%);
+          max-width: 720px;
+          border-radius: 16px 16px 0 0;
+        }
+        #map {
+          height: 380px;
+        }
+        .modal-bg {
+          align-items: center;
+          padding: 1rem;
+        }
+        .modal {
+          border-radius: 16px;
+          border-bottom: 1px solid var(--drv-border);
+          padding-bottom: 1.15rem;
+        }
       }
     </style>
   </head>
   <body class="ts-skin-dark ts-page-partner ts-page-driver">
-    <header class="ts-topnav" role="navigation">
-      <a class="ts-brand" href="/">
-        <span class="ts-brand-mark" aria-hidden="true">G</span>
-        <span data-i18n="nav.brand">arden</span>
-      </a>
-      <nav class="ts-nav">
-        <a href="/account" data-i18n="auth.navAccount">Account</a>
-        <a href="/shop" data-i18n="account.navShop">Shop</a>
-        <select id="langSelect" class="ts-lang-select" aria-label="Language">
-          <option value="sw">Kiswahili</option>
-          <option value="en">English</option>
-        </select>
-        <label class="muted" style="font-size:0.78rem">Driver</label>
-        <select id="driverId" class="ts-lang-select">
+    <div class="drv-shell">
+      <header class="drv-top">
+        <a class="drv-brand" href="/">
+          <span class="drv-brand__mark" aria-hidden="true">G</span>
+          <span class="drv-brand__text">
+            <span class="drv-brand__name">garden</span>
+            <span class="drv-brand__sub" data-i18n="driver.title">Driver</span>
+          </span>
+        </a>
+        <div class="drv-top-actions">
+          <select id="langSelect" class="drv-lang" aria-label="Language">
+            <option value="sw">SW</option>
+            <option value="en">EN</option>
+          </select>
+          <label class="drv-online" id="onlineWrap" for="online">
+            <input type="checkbox" id="online" />
+            <span class="drv-online__dot" aria-hidden="true"></span>
+            <span id="onlineLabel">Offline</span>
+          </label>
+        </div>
+      </header>
+
+      <div class="drv-admin-select" id="driverSelectWrap">
+        <label id="driverIdLabel" for="driverId">Demo driver</label>
+        <select id="driverId">
           <option value="d1">d1 (demo)</option>
           <option value="d2">d2</option>
         </select>
-        <label class="row" style="cursor: pointer; font-size: 0.85rem">
-          <input type="checkbox" id="online" />
-          <span>Online</span>
-        </label>
-      </nav>
-    </header>
-    <div class="ts-partner-head" style="padding: 0 1rem; margin-top: 0.5rem">
-      <h1 data-i18n="driver.title" style="margin: 0; font-size: 1.1rem">Driver — delivery</h1>
-    </div>
-    <div id="map"></div>
-    <div class="panel muted" id="statusLine" data-i18n="driver.allowLocation">Set Online and allow location so your truck appears on the map.</div>
-    <div class="panel" id="routePanel">
-      <strong data-i18n="driver.routeTitle">Route order (GPS)</strong>
-      <p class="muted" style="margin: 4px 0 8px; font-size: 0.82rem">
-        Stops are numbered from your truck position — nearest pickups first when you have no active delivery.
-      </p>
-      <div id="routeStops" class="muted" style="font-size: 0.88rem" data-i18n="driver.allowLocation">Set Online and allow location so your truck appears on the map.</div>
-    </div>
-    <div class="panel" id="jobPanel">
-      <strong>Active delivery</strong>
-      <div id="jobBody" class="muted" style="margin-top: 8px">None</div>
-      <div class="row" style="margin-top: 10px" id="jobActions"></div>
-    </div>
-    <div class="panel">
-      <strong>Earnings</strong>
-      <div id="earnSummary" class="muted" style="margin-top: 8px"></div>
-      <div class="chart" id="earnChart"></div>
-      <details style="margin-top: 10px">
-        <summary style="cursor: pointer; font-weight: 500">Trip history</summary>
-        <div id="trips" class="ts-stack" style="margin-top: 8px"></div>
-      </details>
-    </div>
-    <div class="panel">
-      <strong>Payout (M-Pesa / mobile money)</strong>
-      <div class="row" style="margin-top: 8px">
-        <input id="poAmt" type="number" placeholder="Amount TZS" style="max-width: 140px" />
-        <input id="poDest" type="text" placeholder="Phone / till" style="flex: 1; min-width: 140px" />
-        <button type="button" class="ghost" id="btnPo">Request</button>
       </div>
-      <div id="poOut" class="muted" style="font-size: 0.8rem; margin: 6px 0 0" role="status" aria-live="polite"></div>
-    </div>
-    <div class="panel">
-      <strong>Performance</strong>
-      <div id="perf" style="margin: 8px 0 0; color: #cbd5e1"></div>
-      <p class="muted" style="margin: 0.5rem 0 0; font-size: 0.82rem">
-        Offers weigh rating, acceptance rate, on-time %, and distance to the pickup. Tune dispatch in
-        <span class="ts-mono" style="font-size:0.75rem">driverPriorityScore</span> (server).
-      </p>
+
+      <div class="drv-map-wrap">
+        <div id="map"></div>
+        <div class="drv-status" id="statusLine" data-i18n="driver.allowLocation">
+          Go online and allow location to appear on the map.
+        </div>
+      </div>
+      <div class="drv-phase" id="jobPhasePill" aria-live="polite"></div>
+
+      <main class="drv-main">
+        <section class="drv-panel active" id="panel-work" data-drv-panel="work">
+          <div class="drv-card" id="jobPanel">
+            <h2>Active delivery</h2>
+            <div id="jobBody" class="muted">None — go online to receive orders.</div>
+            <div class="row" style="margin-top: 0.75rem" id="jobActions"></div>
+          </div>
+          <div class="drv-card" id="routePanel">
+            <h2 data-i18n="driver.routeTitle">Route</h2>
+            <p class="drv-card__lead" data-i18n="driver.routeDesc">
+              Shortest path first. Use Navigate for turn-by-turn.
+            </p>
+            <div id="navActions" class="row" style="margin: 0 0 0.65rem; display: none"></div>
+            <div id="routeStops" class="muted" data-i18n="driver.allowLocation">
+              Go online to see your next stops.
+            </div>
+          </div>
+        </section>
+
+        <section class="drv-panel" id="panel-earn" data-drv-panel="earn">
+          <div class="drv-card">
+            <h2>Earnings</h2>
+            <div id="earnSummary" class="drv-earn-grid"></div>
+            <div class="chart" id="earnChart"></div>
+            <details class="drv-trips" style="margin-top: 0.85rem">
+              <summary>Trip history</summary>
+              <div id="trips" class="ts-stack" style="margin-top: 0.55rem"></div>
+            </details>
+          </div>
+          <div class="drv-card">
+            <h2>End-of-day payouts</h2>
+            <p class="drv-card__lead">
+              Your exact net earnings for each day (after platform fee) are requested automatically.
+              Admin pays these from Finance.
+            </p>
+            <div id="drvPayReqList" class="muted" style="font-size: 0.85rem">Loading…</div>
+          </div>
+          <div class="drv-card">
+            <h2>Advance payout</h2>
+            <p class="drv-card__lead">Optional — request available balance early (M-Pesa / mobile money).</p>
+            <div class="drv-fields">
+              <div class="drv-field">
+                <label for="poAmt">Amount (TZS)</label>
+                <input id="poAmt" type="number" placeholder="e.g. 25000" />
+              </div>
+              <div class="drv-field">
+                <label for="poDest">Phone / till</label>
+                <input id="poDest" type="text" placeholder="2557…" />
+              </div>
+              <div class="drv-field drv-field--full">
+                <button type="button" class="ghost" id="btnPo" style="width: 100%">Request advance</button>
+              </div>
+            </div>
+            <div id="poOut" class="muted" style="font-size: 0.8rem; margin: 0.55rem 0 0" role="status" aria-live="polite"></div>
+          </div>
+          <div class="drv-card">
+            <h2>Performance</h2>
+            <div id="perf" style="color: #cbd5e1"></div>
+            <p class="muted" style="margin: 0.55rem 0 0; font-size: 0.78rem">
+              Offers favour rating, acceptance, on-time %, and distance to pickup.
+            </p>
+          </div>
+        </section>
+
+        <section class="drv-panel" id="panel-account" data-drv-panel="account">
+          <div class="drv-card" id="profilePanel">
+            <details id="profileDetails" open>
+              <summary></summary>
+              <div class="drv-profile-head">
+                <div
+                  class="ts-profile-photo__preview"
+                  id="drvAvatar"
+                  aria-hidden="true"
+                  style="width: 52px; height: 52px; border-radius: 14px; font-size: 1.1rem"
+                >
+                  D
+                </div>
+                <div style="min-width: 0">
+                  <strong data-i18n="driver.myProfile">My profile</strong>
+                  <div class="muted" id="profileSummary" style="font-size: 0.78rem; margin-top: 2px">
+                    Photo · vehicle
+                  </div>
+                </div>
+              </div>
+              <p class="drv-card__lead" data-i18n="driver.profileOrderHint">
+                Photo and vehicle details customers and shops see.
+              </p>
+              <div style="margin-bottom: 1rem">
+                <strong style="font-size: 0.8rem" data-i18n="driver.profilePhoto">Profile photo</strong>
+                <div class="row" style="margin-top: 0.55rem">
+                  <label class="ghost" style="cursor: pointer; display: inline-flex; align-items: center">
+                    <span data-i18n="account.choosePhoto">Choose photo</span>
+                    <input id="drvPhoto" type="file" accept="image/*" hidden />
+                  </label>
+                  <button type="button" class="ghost" id="drvPhotoClear" hidden data-i18n="account.removePhoto">
+                    Remove
+                  </button>
+                </div>
+              </div>
+              <strong style="font-size: 0.8rem" data-i18n="driver.vehicleTitle">Your vehicle</strong>
+              <div class="drv-fields" style="margin-top: 0.55rem">
+                <div class="drv-field">
+                  <label for="dvType">Type</label>
+                  <select id="dvType">
+                    <option value="Boda Boda">Boda Boda</option>
+                    <option value="Motorbike">Motorbike</option>
+                    <option value="Bicycle">Bicycle</option>
+                    <option value="Bajaji">Bajaji</option>
+                    <option value="Car">Car</option>
+                    <option value="Van">Van</option>
+                  </select>
+                </div>
+                <div class="drv-field">
+                  <label for="dvMake">Make</label>
+                  <input id="dvMake" placeholder="Bajaj" />
+                </div>
+                <div class="drv-field">
+                  <label for="dvModel">Model</label>
+                  <input id="dvModel" placeholder="Boxer" />
+                </div>
+                <div class="drv-field">
+                  <label for="dvYear">Year</label>
+                  <input
+                    id="dvYear"
+                    type="number"
+                    inputmode="numeric"
+                    min="1980"
+                    max="2030"
+                    placeholder="2019"
+                  />
+                </div>
+                <div class="drv-field">
+                  <label for="dvPlate">Plate</label>
+                  <input id="dvPlate" placeholder="T 123 ABC" />
+                </div>
+                <div class="drv-field">
+                  <label for="dvColor">Colour</label>
+                  <input id="dvColor" placeholder="Red" />
+                </div>
+              </div>
+              <div class="row" style="margin-top: 0.85rem">
+                <button type="button" class="primary" id="btnSaveProfile" data-i18n="driver.saveProfile">
+                  Save profile
+                </button>
+                <a class="btn-nav btn-nav--ghost" href="/account">Account</a>
+                <a class="btn-nav btn-nav--ghost" href="/shop">Shop</a>
+              </div>
+              <div
+                id="profileMsg"
+                class="muted"
+                style="font-size: 0.8rem; margin: 0.55rem 0 0"
+                role="status"
+                aria-live="polite"
+              ></div>
+            </details>
+          </div>
+        </section>
+      </main>
+
+      <nav class="drv-tabs" role="tablist" aria-label="Driver sections">
+        <button type="button" class="on" data-drv-tab="work" aria-selected="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h7l2-7 3 14 2-7h4" /></svg>
+          Work
+        </button>
+        <button type="button" data-drv-tab="earn" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="10" width="4" height="10" rx="1" />
+            <rect x="10" y="6" width="4" height="14" rx="1" />
+            <rect x="17" y="3" width="4" height="17" rx="1" />
+          </svg>
+          Earnings
+        </button>
+        <button type="button" data-drv-tab="account" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" />
+          </svg>
+          Account
+        </button>
+      </nav>
     </div>
 
     <div class="modal-bg" id="offerModal">
-      <div class="modal">
-        <h2 style="margin: 0 0 8px; font-size: 1.1rem">New delivery request</h2>
-        <p class="muted" style="margin-top: 0">Auto-declines in <span class="big" id="offerSec">30</span> s</p>
+      <div class="modal" role="dialog" aria-labelledby="offerTitle">
+        <h2 id="offerTitle" style="margin: 0 0 0.35rem; font-size: 1.15rem">New delivery</h2>
+        <p class="muted" style="margin: 0 0 0.75rem">Accept in <span class="big" id="offerSec">30</span> s</p>
         <div id="offerBody" class="muted" style="font-size: 0.9rem; line-height: 1.5"></div>
-        <div class="row" style="margin-top: 14px">
-          <button type="button" class="primary" id="btnAccept">Accept</button>
+        <div class="row" style="margin-top: 1rem">
+          <button type="button" class="primary" id="btnAccept" style="flex: 1">Accept</button>
           <button type="button" class="ghost" id="btnDecline">Decline</button>
         </div>
       </div>
     </div>
 
-    <script src="/assets/i18n.js"></script>
+<script src="/assets/i18n.js"></script>
     <script src="/assets/tzshop.js"></script>
     <script src="/assets/support-widget.js" defer></script>
     <script>
@@ -313,11 +841,83 @@
       let routeStopMarkers = [];
       let lastRouteStops = [];
       let lastRouteData = null;
+      let lastNavTarget = null;
       let soundedOfferJob = null;
       let modalJobId = null;
       let offerTimer = null;
       let watchId = null;
       let locInterval = null;
+      let routeDrawBusy = false;
+
+      function driverPos() {
+        if (!driverMarker) return null;
+        const p = driverMarker.getLatLng();
+        return { lat: p.lat, lng: p.lng };
+      }
+
+      function mapsNavigateUrl(dest, origin) {
+        const d = `${dest.lat},${dest.lng}`;
+        const o = origin ? `${origin.lat},${origin.lng}` : "";
+        const params = new URLSearchParams({
+          api: "1",
+          destination: d,
+          travelmode: "driving",
+          dir_action: "navigate",
+        });
+        if (o) params.set("origin", o);
+        return `https://www.google.com/maps/dir/?${params.toString()}`;
+      }
+
+      function wazeNavigateUrl(dest) {
+        return `https://waze.com/ul?ll=${encodeURIComponent(`${dest.lat},${dest.lng}`)}&navigate=yes&zoom=17`;
+      }
+
+      function openExternalNav(dest) {
+        if (!dest || !Number.isFinite(dest.lat) || !Number.isFinite(dest.lng)) return;
+        const origin = driverPos();
+        window.open(mapsNavigateUrl(dest, origin), "_blank", "noopener,noreferrer");
+      }
+
+      function pickBestOsrmRoute(routes) {
+        if (!Array.isArray(routes) || !routes.length) return null;
+        return routes.slice().sort((a, b) => {
+          const dt = (a.duration || 0) - (b.duration || 0);
+          if (dt !== 0) return dt;
+          return (a.distance || 0) - (b.distance || 0);
+        })[0];
+      }
+
+      async function fetchOsrmRoute(points) {
+        if (!points || points.length < 2) return null;
+        const coordStr = points.map((p) => `${p.lng},${p.lat}`).join(";");
+        const url =
+          `https://router.project-osrm.org/route/v1/driving/${coordStr}` +
+          `?overview=full&geometries=geojson&alternatives=true&steps=false`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error("routing failed");
+        const j = await r.json();
+        return pickBestOsrmRoute(j.routes || []);
+      }
+
+      function renderNavActions(target, label) {
+        const box = $("navActions");
+        if (!box) return;
+        if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) {
+          box.style.display = "none";
+          box.innerHTML = "";
+          lastNavTarget = null;
+          return;
+        }
+        lastNavTarget = { ...target, label: label || "" };
+        const origin = driverPos();
+        const gUrl = mapsNavigateUrl(target, origin);
+        const wUrl = wazeNavigateUrl(target);
+        box.style.display = "flex";
+        box.innerHTML = `
+          <a class="btn-nav" href="${gUrl}" target="_blank" rel="noopener noreferrer" id="btnNavGoogle">${t("driver.navGoogle")}</a>
+          <a class="btn-nav btn-nav--ghost" href="${wUrl}" target="_blank" rel="noopener noreferrer" id="btnNavWaze">${t("driver.navWaze")}</a>
+        `;
+      }
 
       function playAlert() {
         try {
@@ -342,6 +942,84 @@
 
       async function patchDriver(body) {
         return api(`/api/drivers/${did()}`, { method: "PATCH", body: JSON.stringify(body) });
+      }
+
+      async function loadProfile() {
+        const [drvRes, meRes] = await Promise.all([api(`/api/drivers/${did()}`), api("/api/auth/me")]);
+        stagedDriverAvatar = undefined;
+        if (meRes.ok) {
+          const me = await meRes.json();
+          const u = me.user || {};
+          driverAccountName = u.name || "D";
+          TZShop.renderAvatar($("drvAvatar"), { url: u.avatar_url || null, name: driverAccountName });
+          $("drvPhotoClear").hidden = !u.avatar_url;
+        }
+        if (drvRes.ok) {
+          const j = await drvRes.json();
+          const d = j.driver || {};
+          if (d.vehicle_type) $("dvType").value = d.vehicle_type;
+          $("dvMake").value = d.vehicle_make || "";
+          $("dvModel").value = d.vehicle_model || "";
+          $("dvYear").value = d.vehicle_year ?? "";
+          $("dvPlate").value = d.vehicle_plate || "";
+          $("dvColor").value = d.vehicle_color || "";
+          const bits = [d.vehicle_type, [d.vehicle_make, d.vehicle_model].filter(Boolean).join(" "), d.vehicle_plate]
+            .filter(Boolean)
+            .join(" · ");
+          $("profileSummary").textContent = bits || t("driver.profileOrderHint");
+        }
+        $("profileMsg").textContent = "";
+      }
+
+      let stagedDriverAvatar = undefined;
+      let driverAccountName = "D";
+
+      async function saveProfile() {
+        $("profileMsg").textContent = "";
+        try {
+          if (stagedDriverAvatar !== undefined) {
+            const r = await api("/api/auth/me", {
+              method: "PATCH",
+              body: JSON.stringify({ avatar_url: stagedDriverAvatar }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(j.error || "Photo save failed");
+            stagedDriverAvatar = undefined;
+            TZShop.renderAvatar($("drvAvatar"), {
+              url: j.user?.avatar_url || null,
+              name: j.user?.name || driverAccountName,
+            });
+            $("drvPhotoClear").hidden = !j.user?.avatar_url;
+          }
+          const r2 = await api(`/api/drivers/${did()}/vehicle`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              vehicle_type: $("dvType").value,
+              vehicle_make: $("dvMake").value,
+              vehicle_model: $("dvModel").value,
+              vehicle_year: Number($("dvYear").value),
+              vehicle_plate: $("dvPlate").value,
+              vehicle_color: $("dvColor").value,
+            }),
+          });
+          const j2 = await r2.json().catch(() => ({}));
+          if (!r2.ok) throw new Error(j2.error || "Vehicle save failed");
+          const d = j2.driver || {};
+          if (d.vehicle_type) $("dvType").value = d.vehicle_type;
+          $("dvMake").value = d.vehicle_make || "";
+          $("dvModel").value = d.vehicle_model || "";
+          $("dvYear").value = d.vehicle_year ?? "";
+          $("dvPlate").value = d.vehicle_plate || "";
+          $("dvColor").value = d.vehicle_color || "";
+          const bits = [d.vehicle_type, [d.vehicle_make, d.vehicle_model].filter(Boolean).join(" "), d.vehicle_plate]
+            .filter(Boolean)
+            .join(" · ");
+          $("profileSummary").textContent = bits || t("driver.profileOrderHint");
+          $("profileMsg").textContent = t("driver.profileSaved");
+          TZShop.showToast(t("driver.profileSaved"), "ok");
+        } catch (err) {
+          $("profileMsg").textContent = err.message || "Failed";
+        }
       }
 
       function initMap() {
@@ -393,17 +1071,25 @@
         if (!stops.length && !upcoming.length) {
           $("routeStops").innerHTML = `<p class="muted" style="margin:0">${routeEmptyMessage(data.hint)}</p>`;
           setRoute(null);
+          renderNavActions(null);
           return;
         }
-        let html = "";
+        const current = stops.find((s) => s.status === "current") || stops[0] || null;
+        if (current) renderNavActions({ lat: current.lat, lng: current.lng }, current.label);
+        else if (upcoming[0]?.pickup) renderNavActions(upcoming[0].pickup, upcoming[0].pickup_label);
+        else renderNavActions(null);
+
+        let html = `<p class="route-nav-hint">${t("driver.navHint")}</p>`;
         for (const s of stops) {
           const cur = s.status === "current";
+          const gUrl = mapsNavigateUrl({ lat: s.lat, lng: s.lng }, driverPos());
           html += `<div class="route-stop">
             <span class="route-num${cur ? " route-num--current" : s.status === "pending" ? " route-num--pending" : ""}">${s.seq}</span>
-            <div>
+            <div style="flex:1">
               <div><strong>${legLabel(s.leg)}</strong>${cur ? ` <span style="color:#f97316">${t("driver.now")}</span>` : ""}</div>
               <div>${TZShop.esc(s.label)}</div>
               <div class="muted" style="font-size:0.8rem">${t("driver.order")} ${TZShop.esc(s.order_id || "—")} · ${s.distance_km ?? "?"} km${s.eta_min != null ? ` · ~${s.eta_min} min` : ""}</div>
+              <div style="margin-top:6px"><a class="btn-nav" style="padding:0.35rem 0.65rem;font-size:0.78rem" href="${gUrl}" target="_blank" rel="noopener noreferrer">${t("driver.navShortest")}</a></div>
             </div>
           </div>`;
           if (map) {
@@ -415,12 +1101,22 @@
         if (upcoming.length) {
           html += `<p style="margin:12px 0 6px;font-weight:600;font-size:0.85rem;color:#cbd5e1">${t("driver.routeNearby")}</p>`;
           for (const u of upcoming) {
+            const pickup = u.pickup || {};
+            const gUrl =
+              Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng)
+                ? mapsNavigateUrl({ lat: pickup.lat, lng: pickup.lng }, driverPos())
+                : null;
             html += `<div class="route-stop">
               <span class="route-num route-num--queue">${u.queue_position}</span>
-              <div>
+              <div style="flex:1">
                 <div><strong>${t("driver.pickup")}</strong> · ${TZShop.esc(u.pickup_label)}</div>
                 <div class="muted" style="font-size:0.8rem">${TZShop.esc(u.customer_name || "")} · ${TZShop.esc(u.dropoff_label || "")}</div>
-                <div class="muted" style="font-size:0.75rem">${u.distance_to_pickup_km} km · ~${u.eta_to_pickup_min} min · ${(u.earnings_tzs || 0).toLocaleString()} TZS</div>
+                <div class="muted" style="font-size:0.75rem">${u.distance_to_pickup_km} km · ~${u.eta_to_pickup_min} min · your pay <strong style="color:#4ade80">${(u.earnings_tzs || 0).toLocaleString()} TZS</strong></div>
+                ${
+                  gUrl
+                    ? `<div style="margin-top:6px"><a class="btn-nav btn-nav--ghost" style="padding:0.35rem 0.65rem;font-size:0.78rem" href="${gUrl}" target="_blank" rel="noopener noreferrer">${t("driver.navShortest")}</a></div>`
+                    : ""
+                }
               </div>
             </div>`;
             if (map && u.pickup) {
@@ -444,21 +1140,21 @@
           setRoute(null);
           return;
         }
-        const d = driverMarker.getLatLng();
-        const points = [{ lat: d.lat, lng: d.lng }, ...stops.map((s) => ({ lat: s.lat, lng: s.lng }))];
-        if (points.length < 2) {
-          setRoute(null);
-          return;
-        }
-        const coordStr = points.map((p) => `${p.lng},${p.lat}`).join(";");
+        if (routeDrawBusy) return;
+        routeDrawBusy = true;
         try {
-          const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
-          const r = await fetch(url);
-          if (!r.ok) throw new Error("routing failed");
-          const j = await r.json();
-          setRoute(j.routes?.[0]?.geometry || null);
+          const d = driverMarker.getLatLng();
+          const points = [{ lat: d.lat, lng: d.lng }, ...stops.map((s) => ({ lat: s.lat, lng: s.lng }))];
+          if (points.length < 2) {
+            setRoute(null);
+            return;
+          }
+          const best = await fetchOsrmRoute(points);
+          setRoute(best?.geometry || null);
         } catch {
           setRoute(null);
+        } finally {
+          routeDrawBusy = false;
         }
       }
 
@@ -472,17 +1168,20 @@
       }
 
       async function osrmRoute(lat1, lng1, lat2, lng2) {
-        const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error("routing failed");
-        const j = await r.json();
-        return j.routes?.[0]?.geometry || null;
+        const best = await fetchOsrmRoute([
+          { lat: lat1, lng: lng1 },
+          { lat: lat2, lng: lng2 },
+        ]);
+        return best?.geometry || null;
       }
 
       async function refreshMapRoute(active) {
         if (!active || !active.job || !driverMarker) return;
         const d = driverMarker.getLatLng();
         const t = active.target;
+        if (t && Number.isFinite(t.lat) && Number.isFinite(t.lng)) {
+          renderNavActions({ lat: t.lat, lng: t.lng }, active.phase === "to_shop" ? t("driver.pickup") : t("driver.dropoff"));
+        }
         try {
           const g = await osrmRoute(d.lat, d.lng, t.lat, t.lng);
           setRoute(g);
@@ -495,22 +1194,76 @@
         const r = await api("/api/auth/me");
         if (!r.ok) return;
         const j = await r.json();
-        if (j.user?.driver_id && $("driverId").querySelector(`option[value="${j.user.driver_id}"]`)) {
-          $("driverId").value = j.user.driver_id;
+        const sel = $("driverId");
+        if (j.user?.driver_id) {
+          if (!sel.querySelector(`option[value="${j.user.driver_id}"]`)) {
+            const opt = document.createElement("option");
+            opt.value = j.user.driver_id;
+            opt.textContent = j.user.name || j.user.driver_id;
+            sel.appendChild(opt);
+          }
+          sel.value = j.user.driver_id;
         }
-        if (j.user?.role === "driver") {
-          $("driverId").disabled = true;
+        if (j.user?.role === "driver" || (j.user?.driver_id && j.user?.role !== "admin")) {
+          sel.disabled = true;
+          sel.hidden = true;
+          const lab = $("driverIdLabel");
+          if (lab) lab.hidden = true;
+          const wrap = $("driverSelectWrap");
+          if (wrap) wrap.classList.remove("show");
+        } else {
+          const wrap = $("driverSelectWrap");
+          if (wrap) wrap.classList.add("show");
         }
+      }
+
+      function setDriverTab(name) {
+        const tab = name === "earn" || name === "account" ? name : "work";
+        document.querySelectorAll("[data-drv-panel]").forEach((el) => {
+          el.classList.toggle("active", el.getAttribute("data-drv-panel") === tab);
+        });
+        document.querySelectorAll("[data-drv-tab]").forEach((btn) => {
+          const on = btn.getAttribute("data-drv-tab") === tab;
+          btn.classList.toggle("on", on);
+          btn.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        if (tab === "account" && $("profileDetails")) $("profileDetails").open = true;
+        if (map) setTimeout(() => map.invalidateSize(), 80);
+      }
+
+      function syncOnlineUi() {
+        const on = !!$("online")?.checked;
+        const wrap = $("onlineWrap");
+        const lab = $("onlineLabel");
+        if (wrap) wrap.classList.toggle("is-on", on);
+        if (lab) lab.textContent = on ? "Online" : "Offline";
+      }
+
+      function setJobPhasePill(text) {
+        const pill = $("jobPhasePill");
+        if (!pill) return;
+        if (!text) {
+          pill.textContent = "";
+          pill.classList.remove("show");
+          return;
+        }
+        pill.textContent = text;
+        pill.classList.add("show");
       }
 
       async function poll() {
         const on = $("online").checked;
+        syncOnlineUi();
         if (!on) {
           $("statusLine").textContent = t("driver.offlineHint");
           $("offerModal").classList.remove("show");
           $("routeStops").innerHTML = `<p class="muted" style="margin:0">${t("driver.routeOffline")}</p>`;
           clearRouteMarkers();
           setRoute(null);
+          renderNavActions(null);
+          setJobPhasePill("");
+          $("jobBody").textContent = t("driver.activeNone");
+          $("jobActions").innerHTML = "";
         } else {
           const { offer } = await (await api(`/api/drivers/${did()}/offer`)).json();
           if (offer) {
@@ -535,18 +1288,36 @@
           const phase = active.phase === "to_shop" ? t("driver.stepPickup") : t("driver.stepDropoff");
           const shopTel = active.shop_phone || "";
           const custTel = o?.customer_phone || "";
+          const target = active.target;
+          const gUrl =
+            target && Number.isFinite(target.lat) && Number.isFinite(target.lng)
+              ? mapsNavigateUrl({ lat: target.lat, lng: target.lng }, driverPos())
+              : null;
+          const wUrl =
+            target && Number.isFinite(target.lat) && Number.isFinite(target.lng)
+              ? wazeNavigateUrl({ lat: target.lat, lng: target.lng })
+              : null;
+          if (target) renderNavActions({ lat: target.lat, lng: target.lng }, phase);
+          setJobPhasePill(phase);
+          const net = Number(active.job.earnings_tzs ?? 0);
           $("jobBody").innerHTML = `
-            <div><strong>${phase}</strong></div>
-            <div>Order <span class="ts-mono" style="color:#7dd3fc">${o?.id || "—"}</span> · ${o?.customer_name || ""}</div>
+            <div style="font-size:1.05rem;font-weight:700;color:#f8fafc;margin-bottom:0.35rem">${phase}</div>
+            <div>Order <span class="ts-mono" style="color:#5eead4">${o?.id || "—"}</span> · ${TZShop.esc(o?.customer_name || "")}</div>
             <div>${TZShop.esc(o?.customer_city || "")}${o?.delivery_area ? ` · ${TZShop.esc(o.delivery_area)}` : ""}</div>
-            <div><strong>${t("driver.deliveryAddress")}:</strong> ${TZShop.esc(o?.dropoff_label || active.job?.dropoff?.label || "—")}</div>
-            <div>Fee: <strong>${active.job.earnings_tzs?.toLocaleString()} TZS</strong></div>
-            <div>~${active.distance_to_target_km ?? "?"} km to ${active.phase === "to_shop" ? "pickup" : "drop-off"}</div>
-            <div class="row" style="margin-top:8px">
+            <div style="margin-top:0.35rem"><strong>${t("driver.deliveryAddress")}:</strong> ${TZShop.esc(o?.dropoff_label || active.job?.dropoff?.label || "—")}</div>
+            <div class="drv-fare-box" style="margin-top:0.65rem;padding:0.65rem 0.75rem;border-radius:12px;background:rgba(15,118,110,0.18);border:1px solid rgba(20,184,166,0.28)">
+              <div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:baseline"><span class="muted">Your pay</span><strong style="color:#4ade80;font-size:1.1rem">${net.toLocaleString()} TZS</strong></div>
+            </div>
+            <div style="margin-top:0.35rem">~${active.distance_to_target_km ?? "?"} km to ${active.phase === "to_shop" ? "pickup" : "drop-off"}</div>
+            <div class="row" style="margin-top:0.65rem">
+              ${gUrl ? `<a class="btn-nav" href="${gUrl}" target="_blank" rel="noopener noreferrer">${t("driver.navGoogle")}</a>` : ""}
+              ${wUrl ? `<a class="btn-nav btn-nav--ghost" href="${wUrl}" target="_blank" rel="noopener noreferrer">${t("driver.navWaze")}</a>` : ""}
               <a href="tel:${shopTel}"><button type="button" class="ghost">${t("driver.callShop")}</button></a>
               <a href="tel:${custTel}"><button type="button" class="ghost">${t("driver.callCustomer")}</button></a>
             </div>
-            <div class="muted" style="margin-top:6px">Customer OTP (show to customer at door): <strong style="color:#fbbf24">${active.delivery_otp || "—"}</strong></div>
+            <div class="muted" style="margin-top:0.55rem;padding:0.5rem 0.65rem;border-radius:10px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.28)">
+              Door OTP: <strong style="color:#fbbf24;letter-spacing:0.06em">${active.delivery_otp || "—"}</strong>
+            </div>
           `;
           const ja = $("jobActions");
           ja.innerHTML = "";
@@ -568,7 +1339,9 @@
             ja.appendChild(b1);
             ja.appendChild(b2);
           }
+          refreshMapRoute(active);
         } else {
+          setJobPhasePill("");
           $("jobBody").textContent = t("driver.activeNone");
           $("jobActions").innerHTML = "";
         }
@@ -584,7 +1357,11 @@
         }
 
         const e = await (await api(`/api/drivers/${did()}/earnings`)).json();
-        $("earnSummary").innerHTML = `Today: <strong>${e.today_earnings_tzs?.toLocaleString()} TZS</strong> · ${e.deliveries_completed_today} trips · Available <strong>${e.available_balance_tzs?.toLocaleString()} TZS</strong>`;
+        $("earnSummary").innerHTML = `
+          <div class="drv-earn-tile"><span>Today</span><strong>${Number(e.today_earnings_tzs || 0).toLocaleString()}</strong></div>
+          <div class="drv-earn-tile"><span>Trips</span><strong>${e.deliveries_completed_today ?? 0}</strong></div>
+          <div class="drv-earn-tile"><span>Available</span><strong>${Number(e.available_balance_tzs || 0).toLocaleString()}</strong></div>
+        `;
         const max = Math.max(1, ...e.weekly.map((x) => x.total_tzs));
         $("earnChart").innerHTML = e.weekly
           .map((x) => {
@@ -597,15 +1374,16 @@
         const tripRows = h.trips?.slice(0, 40) || [];
         $("trips").innerHTML = tripRows.length
           ? tripRows
-              .map(
-                (trip) => `<div class="ts-stack__row">
-            <span class="ts-mono" style="font-size:0.75rem;color:#7dd3fc">${TZShop.esc(trip.order_id || "—")}</span>
-            <span><strong>${TZShop.moneyTzs(trip.amount_tzs)}</strong></span>
+              .map((trip) => {
+                const net = Number(trip.earnings_tzs ?? trip.amount_tzs ?? 0);
+                return `<div class="ts-stack__row">
+            <span class="ts-mono" style="font-size:0.75rem;color:#5eead4">${TZShop.esc(trip.order_id || "—")}</span>
+            <span><strong style="color:#4ade80">${TZShop.moneyTzs(net)}</strong></span>
             <span class="muted" style="font-size:0.7rem;max-width:7rem;text-align:right">${new Date(
               trip.created_at
             ).toLocaleString()}</span>
-          </div>`
-              )
+          </div>`;
+              })
               .join("")
           : '<p class="muted" style="margin:0.25rem 0 0">No completed trips in this session yet.</p>';
 
@@ -622,6 +1400,33 @@
           </dl>
           <p class="muted" style="margin:0.6rem 0 0;font-size:0.75rem;">${TZShop.esc(p.priority_score_hint || "")}</p>`;
         }
+
+        const prBox = $("drvPayReqList");
+        if (prBox) {
+          try {
+            const pr = await (await api(`/api/drivers/${did()}/payment-requests`)).json();
+            const rows = (pr.requests || []).slice(0, 20);
+            prBox.innerHTML = rows.length
+              ? rows
+                  .map((req) => {
+                    const day = req.day_key || "—";
+                    const status = String(req.status || "").toLowerCase();
+                    const statusColor =
+                      status === "paid" ? "#4ade80" : status === "pending" ? "#fbbf24" : "#94a3b8";
+                    return `<div style="display:flex;justify-content:space-between;gap:0.75rem;padding:0.55rem 0;border-bottom:1px solid rgba(148,163,184,0.14)">
+                      <div>
+                        <div><strong>${Number(req.amount_tzs || 0).toLocaleString()} TZS</strong></div>
+                        <div class="muted" style="font-size:0.75rem">${TZShop.esc(day)} · ${req.deliveries || 0} trips</div>
+                      </div>
+                      <div style="text-align:right;color:${statusColor};font-size:0.8rem;font-weight:600;text-transform:capitalize">${TZShop.esc(status || "—")}</div>
+                    </div>`;
+                  })
+                  .join("")
+              : `<p class="muted" style="margin:0">No end-of-day requests yet. After you complete deliveries, Finance generates today’s exact amount automatically.</p>`;
+          } catch (_) {
+            prBox.innerHTML = `<p class="muted" style="margin:0">Could not load payout requests.</p>`;
+          }
+        }
       }
 
       function showOffer(offer) {
@@ -629,13 +1434,33 @@
         if (modalJobId !== offer.job_id) {
           modalJobId = offer.job_id;
         }
+        const pickup = offer.pickup;
+        const gUrl =
+          pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng)
+            ? mapsNavigateUrl({ lat: pickup.lat, lng: pickup.lng }, driverPos())
+            : null;
+        const wUrl =
+          pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng)
+            ? wazeNavigateUrl({ lat: pickup.lat, lng: pickup.lng })
+            : null;
         $("offerBody").innerHTML = `
           <div style="margin-bottom:6px"><span class="badge" style="background:#134e4a;color:#5eead4">Nearest order</span></div>
           <div><strong>Pickup:</strong> ${offer.pickup?.label || "Shop"}</div>
           <div><strong>Drop-off:</strong> ${offer.dropoff?.label || "Customer"}</div>
           <div>Shop→customer: <strong>${offer.distance_shop_customer_km} km</strong> · ~${offer.eta_shop_to_customer_min} min ride</div>
           <div>You are <strong>${offer.distance_to_pickup_km} km</strong> from pickup (~${offer.eta_to_pickup_min} min)</div>
-          <div>Earnings: <strong style="color:#4ade80">${offer.earnings_tzs?.toLocaleString()} TZS</strong></div>
+          <div class="drv-fare-box" style="margin-top:0.65rem;padding:0.65rem 0.75rem;border-radius:12px;background:rgba(15,118,110,0.18);border:1px solid rgba(20,184,166,0.28)">
+            <div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:baseline"><span class="muted">Your pay</span><strong style="color:#4ade80;font-size:1.1rem">${Number(offer.earnings_tzs || 0).toLocaleString()} TZS</strong></div>
+          </div>
+          <p class="route-nav-hint" style="margin-top:10px">${t("driver.navHint")}</p>
+          ${
+            gUrl
+              ? `<div class="row" style="margin-top:8px">
+            <a class="btn-nav" href="${gUrl}" target="_blank" rel="noopener noreferrer">${t("driver.navGoogle")}</a>
+            <a class="btn-nav btn-nav--ghost" href="${wUrl}" target="_blank" rel="noopener noreferrer">${t("driver.navWaze")}</a>
+          </div>`
+              : ""
+          }
         `;
         let left = offer.seconds_left ?? OFFER_TTL;
         $("offerSec").textContent = left;
@@ -703,6 +1528,7 @@
       }
 
       $("online").addEventListener("change", async () => {
+        syncOnlineUi();
         const on = $("online").checked;
         const ll = driverMarker.getLatLng();
         await patchDriver({ online: on, lat: ll.lat, lng: ll.lng });
@@ -713,9 +1539,48 @@
         soundedOfferJob = null;
         modalJobId = null;
         $("online").checked = false;
+        syncOnlineUi();
         patchDriver({ online: false });
+        loadProfile();
         poll();
       });
+
+      document.querySelectorAll("[data-drv-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => setDriverTab(btn.getAttribute("data-drv-tab")));
+      });
+
+      $("btnSaveProfile").addEventListener("click", () => saveProfile());
+
+      $("drvPhoto").addEventListener("change", async () => {
+        const file = $("drvPhoto").files && $("drvPhoto").files[0];
+        $("drvPhoto").value = "";
+        if (!file) return;
+        try {
+          stagedDriverAvatar = await TZShop.fileToDataUrl(file, 480, 0.78);
+          TZShop.renderAvatar($("drvAvatar"), { url: stagedDriverAvatar, name: driverAccountName });
+          $("drvPhotoClear").hidden = false;
+          $("profileMsg").textContent = "";
+          setDriverTab("account");
+        } catch (err) {
+          $("profileMsg").textContent = err.message || "Failed";
+        }
+      });
+
+      $("drvPhotoClear").addEventListener("click", () => {
+        stagedDriverAvatar = null;
+        TZShop.renderAvatar($("drvAvatar"), { url: null, name: driverAccountName });
+        $("drvPhotoClear").hidden = true;
+      });
+
+      function openProfileIfNeeded() {
+        const hash = (location.hash || "").replace("#", "");
+        if (hash === "profile" || hash === "account") {
+          setDriverTab("account");
+          $("profilePanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (hash === "earn" || hash === "earnings") {
+          setDriverTab("earn");
+        }
+      }
 
       function startLocation() {
         if (!navigator.geolocation) return;
@@ -768,8 +1633,12 @@
       ensureAuth().then(async (ok) => {
         if (!ok) return;
         await bindDriverSession();
+        syncOnlineUi();
         initMap();
         startLocation();
+        await loadProfile();
+        openProfileIfNeeded();
+        window.addEventListener("hashchange", openProfileIfNeeded);
         setInterval(poll, 2500);
         poll();
       });

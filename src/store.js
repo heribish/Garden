@@ -1,6 +1,13 @@
 import crypto from "node:crypto";
 import pg from "pg";
 import { canTransition, transitionOrder } from "./orderMachine.js";
+import { calculateDeliveryFare, fareClassFromVehicleType } from "./fare.js";
+import {
+  VENDOR_PLATFORM_FEE_BPS,
+  customerPriceFromVendor,
+  platformFeeFromCustomerGross,
+  vendorPriceFromCustomer,
+} from "./fees.js";
 
 /** @typedef {'mpesa' | 'airtel_money' | 'tigo_pesa' | 'halopesa'} WalletProvider */
 /** @typedef {'cod' | WalletProvider} PaymentMethod */
@@ -23,7 +30,7 @@ const refundRequests = [];
 const commissionByCategoryBps = new Map();
 
 const LOW_STOCK_DEFAULT = 5;
-const PLATFORM_FEE_BPS = 800;
+const PLATFORM_FEE_BPS = VENDOR_PLATFORM_FEE_BPS;
 let commerceDbPool = null;
 let commerceDbReady = false;
 let commerceDbDisabled = false;
@@ -286,6 +293,7 @@ function seed() {
       pickup_lat: s.pickup_lat,
       pickup_lng: s.pickup_lng,
       shop_phone: s.shop_phone,
+      logo_url: null,
       shop_open: true,
       rating_avg: s.rating_avg,
       rating_count: s.rating_count,
@@ -345,8 +353,20 @@ function seedDemoHistory(vendorId) {
         delivery_area: "Kinondoni",
         payment_method: "cod",
         total_tzs: total,
+        subtotal_tzs: total,
+        delivery_fare_tzs: 0,
+        delivery_distance_km: 0,
         status: "delivered",
-        lines: [{ product_id: "p1", name: "Sunflower Oil 1L", qty: 1, unit_price_tzs: 8500, line_total_tzs: 8500 }],
+        lines: [
+          {
+            product_id: "p1",
+            name: "Sunflower Oil 1L",
+            qty: 1,
+            unit_price_tzs: 8500,
+            line_total_tzs: 8500,
+            image_url: products.get("p1")?.image_url || null,
+          },
+        ],
         created_at,
         updated_at: created_at,
         payment_id: null,
@@ -362,9 +382,7 @@ function seedDemoHistory(vendorId) {
 }
 
 export function appendLedgerSale(vendorId, orderId, gross_tzs, created_at) {
-  const v = vendors.get(vendorId);
-  const bps = v?.platform_fee_bps ?? PLATFORM_FEE_BPS;
-  const fee = money((gross_tzs * bps) / 10000);
+  const fee = platformFeeFromCustomerGross(gross_tzs);
   const net = money(gross_tzs - fee);
   ledger.push({
     id: `led_${crypto.randomBytes(6).toString("hex")}`,
@@ -401,6 +419,18 @@ export function updateVendorProfile(vendorId, patch) {
   if (patch.shop_phone != null) v.shop_phone = String(patch.shop_phone).replace(/\D/g, "") || v.shop_phone;
   if (patch.settlement_method != null) v.settlement_method = String(patch.settlement_method).trim() || v.settlement_method;
   if (patch.settlement_number != null) v.settlement_number = String(patch.settlement_number).trim();
+  if (patch.logo_url !== undefined) {
+    if (patch.logo_url === null || patch.logo_url === "") {
+      v.logo_url = null;
+    } else {
+      const s = String(patch.logo_url);
+      if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(s)) {
+        throw new Error("Shop photo must be a JPEG, PNG, or WebP image");
+      }
+      if (s.length > 220000) throw new Error("Shop photo is too large — try a smaller image");
+      v.logo_url = s;
+    }
+  }
   if (patch.shop_open != null) {
     if (v.admin_paused && Boolean(patch.shop_open)) {
       throw new Error("Vendor is paused by admin");
@@ -432,20 +462,26 @@ export function createCategory(vendorId, { name, slug }) {
 }
 
 export function listVendorProducts(vendorId, { include_inactive } = {}) {
-  return [...products.values()].filter((p) => p.vendor_id === vendorId && (include_inactive || p.active));
+  return [...products.values()]
+    .filter((p) => p.vendor_id === vendorId && (include_inactive || p.active))
+    .map((p) => withDerivedPricing({ ...p }));
 }
 
 export function listPublicProducts(vendorId) {
   const v = vendors.get(vendorId);
   if (!v || !v.shop_open) return [];
-  return [...products.values()].filter((p) => p.vendor_id === vendorId && p.active && p.stock_qty > 0);
+  return [...products.values()]
+    .filter((p) => p.vendor_id === vendorId && p.active)
+    .map((p) => toCustomerProduct(p));
 }
 
 export function listProducts() {
-  return [...products.values()].filter((p) => {
-    const v = vendors.get(p.vendor_id);
-    return v?.shop_open && p.active && p.stock_qty > 0;
-  });
+  return [...products.values()]
+    .filter((p) => {
+      const v = vendors.get(p.vendor_id);
+      return v?.shop_open && p.active;
+    })
+    .map((p) => toCustomerProduct(p));
 }
 
 /**
@@ -502,14 +538,16 @@ export function listProductsNear(opts = {}) {
     return { vendors: [], vendor: null, products: [], city: opts.city || null, city_id: opts.cityId || null };
   }
   const productsNear = [...products.values()]
-    .filter((p) => p.vendor_id === nearest.id && p.active && p.stock_qty > 0)
-    .map((p) => ({
-      ...p,
-      vendor_name: nearest.name,
-      vendor_city: nearest.city,
-      vendor_zone: nearest.zone,
-      distance_km: nearest.distance_km,
-    }))
+    .filter((p) => p.vendor_id === nearest.id && p.active)
+    .map((p) =>
+      toCustomerProduct({
+        ...p,
+        vendor_name: nearest.name,
+        vendor_city: nearest.city,
+        vendor_zone: nearest.zone,
+        distance_km: nearest.distance_km,
+      })
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return {
@@ -528,17 +566,88 @@ export function getProduct(id) {
 /** Normalise wholesale/bulk-pricing fields from arbitrary input. */
 function normalizeWholesale(input, fallback = {}) {
   const enabled = input.wholesale_enabled != null ? Boolean(input.wholesale_enabled) : Boolean(fallback.wholesale_enabled);
-  let price = input.wholesale_price_tzs != null ? money(Number(input.wholesale_price_tzs) || 0) : fallback.wholesale_price_tzs ?? 0;
+  let vendorWholesale =
+    input.wholesale_vendor_price_tzs != null
+      ? money(Number(input.wholesale_vendor_price_tzs) || 0)
+      : input.wholesale_price_tzs != null
+        ? vendorPriceFromCustomer(Number(input.wholesale_price_tzs) || 0)
+        : fallback.wholesale_vendor_price_tzs ??
+          (fallback.wholesale_price_tzs ? vendorPriceFromCustomer(fallback.wholesale_price_tzs) : 0);
+  let price = customerPriceFromVendor(vendorWholesale);
   let minQty = input.wholesale_min_qty != null ? Math.max(0, Math.floor(Number(input.wholesale_min_qty) || 0)) : fallback.wholesale_min_qty ?? 0;
   if (!enabled) {
-    return { wholesale_enabled: false, wholesale_price_tzs: price || 0, wholesale_min_qty: minQty || 0 };
+    return {
+      wholesale_enabled: false,
+      wholesale_vendor_price_tzs: vendorWholesale || 0,
+      wholesale_price_tzs: price || 0,
+      wholesale_min_qty: minQty || 0,
+    };
   }
   if (minQty < 2) minQty = 2;
-  return { wholesale_enabled: true, wholesale_price_tzs: price || 0, wholesale_min_qty: minQty };
+  return {
+    wholesale_enabled: true,
+    wholesale_vendor_price_tzs: vendorWholesale || 0,
+    wholesale_price_tzs: price || 0,
+    wholesale_min_qty: minQty,
+  };
+}
+
+function resolveProductPricing(input, fallback = {}) {
+  let vendor_price_tzs;
+  let price_tzs;
+  if (input.vendor_price_tzs != null) {
+    vendor_price_tzs = money(Number(input.vendor_price_tzs));
+    price_tzs = customerPriceFromVendor(vendor_price_tzs);
+  } else if (input.price_tzs != null) {
+    price_tzs = money(Number(input.price_tzs));
+    vendor_price_tzs = vendorPriceFromCustomer(price_tzs);
+  } else if (fallback.vendor_price_tzs != null || fallback.price_tzs != null) {
+    vendor_price_tzs =
+      fallback.vendor_price_tzs != null ? money(fallback.vendor_price_tzs) : vendorPriceFromCustomer(fallback.price_tzs);
+    price_tzs =
+      fallback.price_tzs != null ? money(fallback.price_tzs) : customerPriceFromVendor(vendor_price_tzs);
+  } else {
+    throw new Error("Price is required");
+  }
+  if (vendor_price_tzs < 0 || price_tzs < 0) throw new Error("Price must be zero or positive");
+  return { vendor_price_tzs, price_tzs };
+}
+
+function withDerivedPricing(p) {
+  if (p.vendor_price_tzs == null && p.price_tzs != null) {
+    p.vendor_price_tzs = vendorPriceFromCustomer(p.price_tzs);
+  }
+  if (p.wholesale_enabled && p.wholesale_vendor_price_tzs == null && p.wholesale_price_tzs > 0) {
+    p.wholesale_vendor_price_tzs = vendorPriceFromCustomer(p.wholesale_price_tzs);
+  }
+  return p;
+}
+
+/** Shop/catalog view: customer pays vendor base + 10% app fee. Strips internal vendor prices. */
+export function toCustomerProduct(p) {
+  if (!p) return null;
+  const row = { ...p };
+  if (row.vendor_price_tzs != null) {
+    row.price_tzs = customerPriceFromVendor(row.vendor_price_tzs);
+    if (row.wholesale_enabled && row.wholesale_vendor_price_tzs > 0) {
+      row.wholesale_price_tzs = customerPriceFromVendor(row.wholesale_vendor_price_tzs);
+    }
+  }
+  delete row.vendor_price_tzs;
+  delete row.wholesale_vendor_price_tzs;
+  return row;
+}
+
+function resolveStockQty(raw) {
+  if (raw == null || raw === "") return 10;
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n)) return 10;
+  return Math.max(0, n);
 }
 
 export function createProduct(vendorId, input) {
   if (!vendors.get(vendorId)) throw new Error("Vendor not found");
+  const { vendor_price_tzs, price_tzs } = resolveProductPricing(input);
   const id = `p_${crypto.randomBytes(5).toString("hex")}`;
   const p = {
     id,
@@ -549,8 +658,9 @@ export function createProduct(vendorId, input) {
     brand: String(input.brand || "").trim() || null,
     unit: String(input.unit || "").trim() || null,
     size: String(input.size || "").trim() || null,
-    price_tzs: money(Number(input.price_tzs)),
-    stock_qty: Math.max(0, Math.floor(Number(input.stock_qty ?? 0))),
+    vendor_price_tzs,
+    price_tzs,
+    stock_qty: resolveStockQty(input.stock_qty),
     active: input.active !== false,
     image_url: input.image_url ? String(input.image_url) : null,
     ...normalizeWholesale(input),
@@ -569,8 +679,10 @@ export function updateProduct(vendorId, productId, patch) {
   if (patch.brand !== undefined) p.brand = String(patch.brand || "").trim() || null;
   if (patch.unit !== undefined) p.unit = String(patch.unit || "").trim() || null;
   if (patch.size !== undefined) p.size = String(patch.size || "").trim() || null;
-  if (patch.price_tzs != null) p.price_tzs = money(Number(patch.price_tzs));
-  if (patch.stock_qty != null) p.stock_qty = Math.max(0, Math.floor(Number(patch.stock_qty)));
+  if (patch.vendor_price_tzs != null || patch.price_tzs != null) {
+    Object.assign(p, resolveProductPricing(patch, p));
+  }
+  if (patch.stock_qty != null) p.stock_qty = resolveStockQty(patch.stock_qty);
   if (patch.active != null) p.active = Boolean(patch.active);
   if (patch.category_id !== undefined) {
     if (patch.category_id && !categories.get(patch.category_id)) throw new Error("Unknown category");
@@ -593,10 +705,10 @@ export function bulkUpdatePrices(vendorId, updates) {
   for (const u of updates || []) {
     const p = products.get(u.product_id);
     if (!p || p.vendor_id !== vendorId) continue;
-    if (u.price_tzs == null) continue;
-    p.price_tzs = money(Number(u.price_tzs));
+    if (u.vendor_price_tzs == null && u.price_tzs == null) continue;
+    Object.assign(p, resolveProductPricing(u, p));
     p.updated_at = iso(new Date());
-    out.push({ id: p.id, price_tzs: p.price_tzs });
+    out.push({ id: p.id, vendor_price_tzs: p.vendor_price_tzs, price_tzs: p.price_tzs });
   }
   return out;
 }
@@ -628,9 +740,10 @@ export function createOrder(input) {
     const qty = Math.floor(line.qty);
     if (qty < 1) throw new Error("Invalid qty");
     if (p.stock_qty < qty) throw new Error(`Insufficient stock for ${p.name}`);
+    const priced = toCustomerProduct(p);
     const wholesale =
-      p.wholesale_enabled && p.wholesale_price_tzs > 0 && p.wholesale_min_qty > 0 && qty >= p.wholesale_min_qty;
-    const unit_price = wholesale ? p.wholesale_price_tzs : p.price_tzs;
+      priced.wholesale_enabled && priced.wholesale_price_tzs > 0 && priced.wholesale_min_qty > 0 && qty >= priced.wholesale_min_qty;
+    const unit_price = wholesale ? priced.wholesale_price_tzs : priced.price_tzs;
     const line_total = money(unit_price * qty);
     total += line_total;
     lines.push({
@@ -640,12 +753,27 @@ export function createOrder(input) {
       unit_price_tzs: unit_price,
       line_total_tzs: line_total,
       wholesale_applied: wholesale,
+      image_url: p.image_url || null,
+      size: p.size || null,
+      unit: p.unit || null,
     });
   }
 
   const v = vendors.get(input.vendor_id);
   const dropLat = input.dropoff_lat != null ? Number(input.dropoff_lat) : (v?.pickup_lat ?? -6.8) - 0.02 + Math.random() * 0.01;
   const dropLng = input.dropoff_lng != null ? Number(input.dropoff_lng) : (v?.pickup_lng ?? 39.21) + 0.02 + Math.random() * 0.01;
+
+  const pickupLat = Number(v?.pickup_lat);
+  const pickupLng = Number(v?.pickup_lng);
+  const distance_km =
+    Number.isFinite(pickupLat) && Number.isFinite(pickupLng) && Number.isFinite(dropLat) && Number.isFinite(dropLng)
+      ? Math.round(haversineKm(pickupLat, pickupLng, dropLat, dropLng) * 100) / 100
+      : 3;
+  const vehicle_class = fareClassFromVehicleType(input.vehicle_class || "Boda Boda");
+  const fare = calculateDeliveryFare({ distance_km, vehicle_class });
+  const subtotal_tzs = money(total);
+  const delivery_fare_tzs = money(fare.fare_tzs);
+  const total_tzs = money(subtotal_tzs + delivery_fare_tzs);
 
   const order = {
     id,
@@ -658,7 +786,14 @@ export function createOrder(input) {
     delivery_area: input.delivery_area ? String(input.delivery_area).trim() : null,
     payment_method: input.payment_method,
     customer_user_id: input.customer_user_id || null,
-    total_tzs: money(total),
+    subtotal_tzs,
+    delivery_fare_tzs,
+    delivery_distance_km: fare.distance_km,
+    delivery_eta_min: fare.eta_min,
+    delivery_fare_basis: fare.basis,
+    delivery_vehicle_class: fare.vehicle_class,
+    delivery_fare_breakdown: fare.breakdown,
+    total_tzs,
     status: "placed",
     lines,
     created_at: iso(new Date()),
@@ -670,12 +805,42 @@ export function createOrder(input) {
     delivery_otp: null,
   };
 
-  if (input.payment_method === "cod") {
+  if (input.payment_method === "cod" || input.payment_method === "bank") {
+    // COD and bank transfer: vendor can start fulfilling; bank customers pay offline.
     order.status = "new";
   }
 
   orders.set(id, order);
   return order;
+}
+
+/** Preview LATRA-aligned delivery fare from a shop to customer coordinates. */
+export function quoteDeliveryFare({ vendor_id, dropoff_lat, dropoff_lng, vehicle_class } = {}) {
+  const v = vendors.get(String(vendor_id || "").trim());
+  if (!v) throw new Error("Vendor not found");
+  const dropLat = Number(dropoff_lat);
+  const dropLng = Number(dropoff_lng);
+  const pickupLat = Number(v.pickup_lat);
+  const pickupLng = Number(v.pickup_lng);
+  if (!Number.isFinite(dropLat) || !Number.isFinite(dropLng)) {
+    throw new Error("Customer location is required for fare (use GPS or set city hub)");
+  }
+  if (!Number.isFinite(pickupLat) || !Number.isFinite(pickupLng)) {
+    throw new Error("Shop location is missing");
+  }
+  const distance_km = Math.round(haversineKm(pickupLat, pickupLng, dropLat, dropLng) * 100) / 100;
+  const fare = calculateDeliveryFare({
+    distance_km,
+    vehicle_class: fareClassFromVehicleType(vehicle_class || "Boda Boda"),
+  });
+  return {
+    vendor_id: v.id,
+    shop_name: v.name,
+    shop_label: v.pickup_label || v.name,
+    pickup: { lat: pickupLat, lng: pickupLng },
+    dropoff: { lat: dropLat, lng: dropLng },
+    ...fare,
+  };
 }
 
 export function getOrder(id) {
@@ -687,7 +852,9 @@ export function getAllOrders() {
 }
 
 export function listVendorOrders(vendorId, { scope } = {}) {
-  const all = [...orders.values()].filter((o) => o.vendor_id === vendorId);
+  const all = [...orders.values()]
+    .filter((o) => o.vendor_id === vendorId)
+    .map((o) => enrichOrderLinesWithProductImages(o));
   const activeStates = new Set([
     "new",
     "preparing",
@@ -701,6 +868,18 @@ export function listVendorOrders(vendorId, { scope } = {}) {
   if (scope === "active") return all.filter((o) => activeStates.has(o.status)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   if (scope === "history") return all.filter((o) => !activeStates.has(o.status)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   return all.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+/** Attach product photos to order lines (snapshot or live catalog fallback). */
+function enrichOrderLinesWithProductImages(order) {
+  if (!order?.lines?.length) return order;
+  const lines = order.lines.map((line) => {
+    if (line.image_url) return line;
+    const p = products.get(line.product_id);
+    if (!p?.image_url) return line;
+    return { ...line, image_url: p.image_url, size: line.size || p.size || null, unit: line.unit || p.unit || null };
+  });
+  return { ...order, lines };
 }
 
 export function acceptOrder(vendorId, orderId) {
@@ -968,6 +1147,8 @@ function publicPaymentRequest(r) {
     vendor_id: r.vendor_id,
     vendor_name: v ? v.name : r.vendor_id,
     amount_tzs: r.amount_tzs,
+    gross_sales_tzs: r.gross_sales_tzs ?? null,
+    platform_fees_tzs: r.platform_fees_tzs ?? null,
     reason: r.reason,
     method: r.method,
     settlement_number: v ? v.settlement_number || null : null,
@@ -976,7 +1157,149 @@ function publicPaymentRequest(r) {
     reference: r.reference || null,
     created_at: r.created_at,
     paid_at: r.paid_at || null,
+    direction: r.direction || "from_vendor",
+    day_key: r.day_key || null,
+    auto: Boolean(r.auto),
   };
+}
+
+export function utcDayKey(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Sales totals for one vendor on a UTC calendar day (from ledger sale rows). */
+export function getVendorDaySales(vendorId, dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  let gross_tzs = 0;
+  let fee_tzs = 0;
+  let net_tzs = 0;
+  let sales_count = 0;
+  for (const l of ledger) {
+    if (l.vendor_id !== vendorId || l.type !== "sale") continue;
+    if (String(l.created_at || "").slice(0, 10) !== day) continue;
+    gross_tzs += l.gross_tzs || 0;
+    fee_tzs += l.fee_tzs || 0;
+    net_tzs += l.net_tzs || 0;
+    sales_count += 1;
+  }
+  return {
+    vendor_id: vendorId,
+    day_key: day,
+    gross_tzs: money(gross_tzs),
+    fee_tzs: money(fee_tzs),
+    net_tzs: money(net_tzs),
+    sales_count,
+  };
+}
+
+export function listVendorsDaySales(dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  const out = [];
+  for (const v of vendors.values()) {
+    const row = getVendorDaySales(v.id, day);
+    if (row.sales_count <= 0 && row.net_tzs <= 0) continue;
+    out.push({
+      ...row,
+      vendor_name: v.name,
+      settlement_method: v.settlement_method || "mpesa",
+      settlement_number: v.settlement_number || null,
+    });
+  }
+  out.sort((a, b) => b.net_tzs - a.net_tzs);
+  return out;
+}
+
+/**
+ * Auto end-of-day: each vendor with sales that day gets a payout request
+ * for their exact net earnings (what they sold that day, after platform fee).
+ * Idempotent per vendor + day.
+ */
+export function generateEndOfDayVendorPayoutRequests(dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  const created = [];
+  const skipped = [];
+  for (const row of listVendorsDaySales(day)) {
+    if (!(row.net_tzs > 0)) {
+      skipped.push({ vendor_id: row.vendor_id, reason: "no_net" });
+      continue;
+    }
+    const existing = [...paymentRequests.values()].find(
+      (r) =>
+        r.vendor_id === row.vendor_id &&
+        r.day_key === day &&
+        r.direction === "to_vendor" &&
+        r.status !== "cancelled"
+    );
+    if (existing) {
+      skipped.push({ vendor_id: row.vendor_id, reason: "already_exists", request_id: existing.id });
+      continue;
+    }
+    const id = `pr_${crypto.randomBytes(5).toString("hex")}`;
+    const req = {
+      id,
+      vendor_id: row.vendor_id,
+      amount_tzs: row.net_tzs,
+      gross_sales_tzs: row.gross_tzs,
+      platform_fees_tzs: row.fee_tzs,
+      reason: `End-of-day payout · ${day}`,
+      method: String(row.settlement_method || "mpesa"),
+      due_label: "End of day",
+      status: "pending",
+      reference: null,
+      created_at: iso(new Date()),
+      paid_at: null,
+      direction: "to_vendor",
+      day_key: day,
+      auto: true,
+    };
+    paymentRequests.set(id, req);
+    created.push(publicPaymentRequest(req));
+  }
+  return {
+    day_key: day,
+    created,
+    skipped,
+    vendors: listVendorsDaySales(day),
+    requests: listAllPaymentRequests().filter((r) => r.day_key === day && r.direction === "to_vendor"),
+  };
+}
+
+export function getEndOfDayFinanceSnapshot(dayKey = utcDayKey()) {
+  const day = String(dayKey || utcDayKey());
+  const vendors = listVendorsDaySales(day);
+  const requests = listAllPaymentRequests().filter((r) => r.day_key === day && r.direction === "to_vendor");
+  const total_net = vendors.reduce((s, v) => s + v.net_tzs, 0);
+  const total_gross = vendors.reduce((s, v) => s + v.gross_tzs, 0);
+  return {
+    day_key: day,
+    vendors,
+    requests,
+    totals: {
+      vendors_with_sales: vendors.length,
+      gross_sales_tzs: money(total_gross),
+      net_payouts_tzs: money(total_net),
+      pending_requests: requests.filter((r) => r.status === "pending").length,
+    },
+  };
+}
+
+/** Admin pays an end-of-day vendor payout request (platform → vendor). */
+export function payVendorEndOfDayRequest(reqId, body = {}) {
+  const r = paymentRequests.get(reqId);
+  if (!r) throw new Error("Payment request not found");
+  if (r.direction !== "to_vendor") throw new Error("Not a vendor payout request");
+  if (r.status === "cancelled") throw new Error("Payment request was cancelled");
+  if (r.status === "paid") return { request: publicPaymentRequest(r), payout: null, already: true };
+
+  const payout = requestPayout(r.vendor_id, {
+    amount_tzs: r.amount_tzs,
+    method: body.method || r.method || "mpesa",
+    destination: body.destination || "",
+  });
+  r.status = "paid";
+  r.reference = String(body.reference || payout.id || "").trim() || payout.id;
+  r.paid_at = iso(new Date());
+  return { request: publicPaymentRequest(r), payout };
 }
 
 export function createVendorPaymentRequest(vendorId, body = {}) {
@@ -996,6 +1319,9 @@ export function createVendorPaymentRequest(vendorId, body = {}) {
     reference: null,
     created_at: iso(new Date()),
     paid_at: null,
+    direction: body.direction === "to_vendor" ? "to_vendor" : "from_vendor",
+    day_key: body.day_key ? String(body.day_key).slice(0, 10) : null,
+    auto: Boolean(body.auto),
   };
   paymentRequests.set(id, row);
   return publicPaymentRequest(row);
@@ -1117,8 +1443,21 @@ export function getLedger() {
   return [...ledger];
 }
 
-export function listVendorApplications() {
-  return [...vendorApplications];
+export function listVendorApplications({ status } = {}) {
+  let rows = [...vendorApplications];
+  if (status) rows = rows.filter((a) => a.status === status);
+  return rows.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+export function removeVendorApplication(appId) {
+  const i = vendorApplications.findIndex((a) => a.id === appId);
+  if (i < 0) throw new Error("Application not found");
+  const app = vendorApplications[i];
+  if (app.status !== "rejected") {
+    throw new Error("Only rejected applications can be removed from the admin panel");
+  }
+  vendorApplications.splice(i, 1);
+  return { ok: true, id: appId };
 }
 
 export function createVendorApplication(input) {
@@ -1165,6 +1504,7 @@ export function approveVendorApplication(appId) {
     pickup_lat: CITY_HUBS[normalizeCityKey(app.city_id) || "dar"].lat + (Math.random() * 0.04 - 0.02),
     pickup_lng: CITY_HUBS[normalizeCityKey(app.city_id) || "dar"].lng + (Math.random() * 0.06 - 0.03),
     shop_phone: app.contact_phone,
+    logo_url: null,
     shop_open: true,
     rating_avg: 0,
     rating_count: 0,

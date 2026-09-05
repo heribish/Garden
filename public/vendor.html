@@ -3,8 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d9488" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="garden" />
     <title>garden — Vendor dashboard</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -183,13 +188,61 @@
         color: #475569;
         margin-bottom: 8px;
       }
+      .order-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0 0 10px;
+      }
+      .order-line {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+      }
+      .order-line__img {
+        width: 52px;
+        height: 52px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #f1f5f9;
+        flex-shrink: 0;
+      }
+      .order-line__ph {
+        width: 52px;
+        height: 52px;
+        border-radius: 8px;
+        background: linear-gradient(145deg, #ccfbf1, #99f6e4);
+        color: #0f766e;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+      }
+      .order-line__body {
+        min-width: 0;
+        flex: 1;
+      }
+      .order-line__body strong {
+        display: block;
+        font-size: 0.88rem;
+        color: #0f172a;
+      }
+      .order-line__body span {
+        font-size: 0.78rem;
+        color: #64748b;
+      }
       .badge {
         display: inline-block;
         padding: 2px 8px;
         border-radius: 999px;
         font-size: 0.75rem;
         background: #e0f2fe;
-        color: #0369a1;
+        color: #115e59;
       }
       .actions {
         display: flex;
@@ -207,7 +260,7 @@
         color: #fff;
       }
       button.action.secondary {
-        background: #2563eb;
+        background: #0f766e;
       }
       button.action.danger {
         background: #b91c1c;
@@ -283,7 +336,7 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
-        background: #f0fdf4;
+        background: #f0fdfa;
         border-bottom: 1px solid #bbf7d0;
       }
       .vendor-notif-stack:empty {
@@ -293,7 +346,7 @@
         padding: 10px 12px;
         border-radius: 10px;
         background: #fff;
-        border: 1px solid #86efac;
+        border: 1px solid #5eead4;
         font-size: 0.88rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
       }
@@ -307,12 +360,12 @@
         margin-top: 4px;
       }
       .order--paid-wallet {
-        border-color: #86efac;
-        background: #f0fdf4;
+        border-color: #5eead4;
+        background: #f0fdfa;
       }
       .badge--pay {
-        background: #dcfce7;
-        color: #166534;
+        background: #ccfbf1;
+        color: #0f766e;
       }
       .muted {
         color: #64748b;
@@ -398,6 +451,20 @@
 
     <section class="ts-partner-panel panel" id="panel-profile">
       <h2 style="font-size: 1rem; margin-top: 0">Vendor profile</h2>
+      <div class="ts-profile-photo" style="margin-bottom: 12px">
+        <div class="ts-profile-photo__preview" id="vpLogoPreview" aria-hidden="true">S</div>
+        <div class="ts-profile-photo__actions">
+          <strong>Shop photo</strong>
+          <p class="muted" style="margin:0;font-size:0.8rem">Optional logo or storefront photo for your shop.</p>
+          <div class="ts-profile-photo__btns">
+            <label class="action secondary" style="cursor:pointer;display:inline-flex;align-items:center;padding:6px 10px;font-size:0.85rem">
+              <span>Choose photo</span>
+              <input id="vpLogo" type="file" accept="image/*" hidden />
+            </label>
+            <button type="button" class="action secondary" id="vpLogoClear" hidden style="padding:6px 10px;font-size:0.85rem">Remove</button>
+          </div>
+        </div>
+      </div>
       <div class="form-grid">
         <div>
           <label>Shop name</label>
@@ -443,6 +510,20 @@
       <button class="action" type="button" id="btnSaveVendorProfile">Save vendor profile</button>
 
       <h2 style="font-size: 1rem; margin-top: 18px">Account profile</h2>
+      <div class="ts-profile-photo" style="margin-bottom: 12px">
+        <div class="ts-profile-photo__preview" id="apAvatar" aria-hidden="true">V</div>
+        <div class="ts-profile-photo__actions">
+          <strong>Your photo</strong>
+          <p class="muted" style="margin:0;font-size:0.8rem">Shown on your Garden account.</p>
+          <div class="ts-profile-photo__btns">
+            <label class="action secondary" style="cursor:pointer;display:inline-flex;align-items:center;padding:6px 10px;font-size:0.85rem">
+              <span>Choose photo</span>
+              <input id="apPhoto" type="file" accept="image/*" hidden />
+            </label>
+            <button type="button" class="action secondary" id="apPhotoClear" hidden style="padding:6px 10px;font-size:0.85rem">Remove</button>
+          </div>
+        </div>
+      </div>
       <div class="form-grid">
         <div>
           <label>Name</label>
@@ -504,8 +585,9 @@
           <input id="pBrand" placeholder="e.g. Azam" />
         </div>
         <div>
-          <label data-i18n="vendor.price">Price (TZS)</label>
-          <input id="pPrice" type="number" placeholder="12000" />
+          <label data-i18n="vendor.price">Your price (TZS)</label>
+          <input id="pPrice" type="number" min="0" step="1" placeholder="12000" />
+          <p class="muted vendor-fee-hint" id="pPriceBreakdown" style="margin:0.35rem 0 0;font-size:0.8rem" aria-live="polite"></p>
         </div>
         <div>
           <label>Unit</label>
@@ -533,7 +615,8 @@
         </div>
         <div>
           <label data-i18n="vendor.stock">Stock qty</label>
-          <input id="pStock" type="number" placeholder="20" />
+          <input id="pStock" type="number" min="0" placeholder="10" />
+          <p class="muted" style="margin:0.25rem 0 0;font-size:0.78rem">Leave blank for 10 units. Products appear on the shop even when out of stock.</p>
         </div>
         <div>
           <label data-i18n="vendor.category">Category</label>
@@ -555,8 +638,9 @@
           <p class="muted" style="margin:0.3rem 0 0.6rem; font-size:0.8rem">Customers automatically get the bulk price when they buy at least the minimum quantity.</p>
           <div class="form-grid" id="wholesaleFields" style="margin-top:0; display:none">
             <div>
-              <label>Bulk price per unit (TZS)</label>
-              <input id="pWholesalePrice" type="number" placeholder="e.g. 10500" />
+              <label data-i18n="vendor.wholesaleYourPrice">Your bulk price per unit (TZS)</label>
+              <input id="pWholesalePrice" type="number" min="0" step="1" placeholder="e.g. 10500" />
+              <p class="muted vendor-fee-hint" id="pWholesaleBreakdown" style="margin:0.35rem 0 0;font-size:0.8rem" aria-live="polite"></p>
             </div>
             <div>
               <label>Minimum qty for bulk price</label>
@@ -587,7 +671,7 @@
       <details style="margin: 1rem 0 0">
         <summary style="cursor: pointer; font-weight: 600; font-size: 0.95rem">Bulk price edit (advanced)</summary>
         <p class="muted" style="margin: 0.5rem 0 0.35rem">
-          Paste a JSON array of <code>product_id</code> and <code>price_tzs</code> keys.
+          Paste a JSON array of <code>product_id</code> and <code>vendor_price_tzs</code> keys (your price before the 10% app fee).
         </p>
         <textarea id="bulkJson" rows="4" style="font-family: ui-monospace, monospace; margin-top: 0.35rem"></textarea>
         <button class="action secondary" type="button" id="btnBulk" style="margin-top: 0.5rem">Apply bulk prices</button>
@@ -600,9 +684,9 @@
     <section class="ts-partner-panel panel" id="panel-earnings">
       <div class="earn-grid" id="earnBoxes"></div>
 
-      <h2 style="font-size: 1rem; margin-top: 6px">Payment requests from admin</h2>
+      <h2 style="font-size: 1rem; margin-top: 6px">End-of-day payouts</h2>
       <p class="muted" style="margin:0 0 0.6rem; font-size:0.82rem">
-        Settlements the admin asks you to pay (e.g. platform commission at the end of each shift). Pay using your saved payment number, then mark it as paid.
+        At the end of each day your net sales (after platform fee) are requested automatically. Admin pays these from Finance.
       </p>
       <div id="payReqList"></div>
 
@@ -644,9 +728,51 @@
     <script src="/assets/support-widget.js" defer></script>
     <script>
       const t = (k, p) => window.TZShop.t(k, p);
+      const APP_FEE_PCT = 10;
+
+      function vendorPlatformFee(vendorPrice) {
+        const base = Math.max(0, Number(vendorPrice) || 0);
+        return Math.round((base * APP_FEE_PCT) / 100);
+      }
+
+      function customerPriceFromVendor(vendorPrice) {
+        const base = Math.max(0, Number(vendorPrice) || 0);
+        return Math.round(base + vendorPlatformFee(base));
+      }
+
+      function fmtTzs(n) {
+        return `${Number(n || 0).toLocaleString()} TZS`;
+      }
+
+      function renderPriceBreakdown(inputId, outputId) {
+        const el = $(outputId);
+        if (!el) return;
+        const vendorPrice = Number($(inputId).value);
+        if (!Number.isFinite(vendorPrice) || vendorPrice <= 0) {
+          el.textContent = t("vendor.priceHint", { pct: APP_FEE_PCT });
+          return;
+        }
+        const fee = vendorPlatformFee(vendorPrice);
+        const customer = customerPriceFromVendor(vendorPrice);
+        el.innerHTML = `${t("vendor.appFee", { pct: APP_FEE_PCT })}: <strong>${fmtTzs(fee)}</strong> · ${t("vendor.customerPays")}: <strong>${fmtTzs(customer)}</strong>`;
+      }
+
+      function wholesaleVendorPriceForForm(p) {
+        if (p.wholesale_vendor_price_tzs != null) return p.wholesale_vendor_price_tzs;
+        if (p.wholesale_price_tzs) return Math.round(Number(p.wholesale_price_tzs) / 1.1);
+        return "";
+      }
+
+      function vendorPriceForForm(p) {
+        if (p.vendor_price_tzs != null) return p.vendor_price_tzs;
+        if (p.price_tzs) return Math.round(Number(p.price_tzs) / 1.1);
+        return "";
+      }
 
       function applyVendorI18n() {
         window.TZShop.applyDataI18n();
+        renderPriceBreakdown("pPrice", "pPriceBreakdown");
+        renderPriceBreakdown("pWholesalePrice", "pWholesaleBreakdown");
         const shop = `<a href="/shop">${t("vendor.customerDemo")}</a>`;
         const driver = `<a href="/driver">${t("vendor.driverApp")}</a>`;
         const admin = `<a href="/admin">Admin</a>`;
@@ -657,19 +783,10 @@
         }
       }
 
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations().then(async (regs) => {
-          if (!regs.length) return;
-          await Promise.all(regs.map((r) => r.unregister().catch(() => {})));
-          if (!sessionStorage.getItem("tz_vendor_sw_reset")) {
-            sessionStorage.setItem("tz_vendor_sw_reset", "1");
-            location.reload();
-          }
-        });
-      }
-
       let VENDOR_ID = "v1";
       let currentActor = null;
+      let stagedShopLogo = undefined;
+      let stagedAccountAvatar = undefined;
 
       const $ = (id) => document.getElementById(id);
       const api = (path, opt = {}) => window.TZShop.apiFetch(path, opt);
@@ -682,7 +799,6 @@
         const wanted = [
           { value: "c1", label: "Groceries" },
           { value: "c2", label: "Household" },
-          { value: "c3", label: "Beverages" },
         ];
         const cats = wanted.map((x) => ({ id: x.value, name: x.label }));
         sel.innerHTML =
@@ -736,6 +852,9 @@
         $("vpOpen").value = j.vendor.shop_open ? "1" : "0";
         if (j.vendor.settlement_method) $("vpSettleMethod").value = j.vendor.settlement_method;
         $("vpSettleNumber").value = j.vendor.settlement_number || "";
+        const logoUrl = stagedShopLogo !== undefined ? stagedShopLogo : j.vendor.logo_url;
+        TZShop.renderAvatar($("vpLogoPreview"), { url: logoUrl, name: j.vendor.name || "S" });
+        $("vpLogoClear").hidden = !logoUrl;
       }
 
       function loadAccountProfile() {
@@ -743,6 +862,9 @@
         $("apName").value = currentActor.name || "";
         $("apPhone").value = currentActor.phone || "";
         $("apLocale").value = currentActor.locale || "en";
+        const avatarUrl = stagedAccountAvatar !== undefined ? stagedAccountAvatar : currentActor.avatar_url;
+        TZShop.renderAvatar($("apAvatar"), { url: avatarUrl, name: currentActor.name || "V" });
+        $("apPhotoClear").hidden = !avatarUrl;
       }
 
       function renderCategoryPick(categories) {
@@ -825,7 +947,8 @@
       }
 
       function providerLabel(provider) {
-        const key = { mpesa: "payMpesa", airtel_money: "payAirtel", tigo_pesa: "payTigo", halopesa: "payHalo" }[provider];
+        const key = { mpesa: "payMpesa", airtel_money: "payAirtel", tigo_pesa: "payTigo", halopesa: "payHalo", bank: "payBank", cod: "payCod" }[provider];
+        if (key === "payBank" || key === "payCod") return t(`checkout.${key}`);
         return key ? t(`vendor.${key}`) : t("vendor.payMobile");
       }
 
@@ -948,14 +1071,35 @@
           settlement_method: $("vpSettleMethod").value,
           settlement_number: $("vpSettleNumber").value.trim(),
         };
+        if (stagedShopLogo !== undefined) body.logo_url = stagedShopLogo;
         const r = await api(`/api/vendors/${VENDOR_ID}/profile`, {
           method: "PATCH",
           body: JSON.stringify(body),
         });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) return alert(j.error || "Failed to save vendor profile");
+        stagedShopLogo = undefined;
         TZShop.showToast("Vendor profile saved.", "ok");
         await loadDashboard();
+      });
+
+      $("vpLogo").addEventListener("change", async () => {
+        const file = $("vpLogo").files && $("vpLogo").files[0];
+        $("vpLogo").value = "";
+        if (!file) return;
+        try {
+          stagedShopLogo = await TZShop.fileToDataUrl(file, 480, 0.78);
+          TZShop.renderAvatar($("vpLogoPreview"), { url: stagedShopLogo, name: $("vpName").value || "S" });
+          $("vpLogoClear").hidden = false;
+        } catch (err) {
+          alert(err.message || "Could not read photo");
+        }
+      });
+
+      $("vpLogoClear").addEventListener("click", () => {
+        stagedShopLogo = null;
+        TZShop.renderAvatar($("vpLogoPreview"), { url: null, name: $("vpName").value || "S" });
+        $("vpLogoClear").hidden = true;
       });
 
       $("btnSaveAccountProfile").addEventListener("click", async () => {
@@ -964,6 +1108,7 @@
           phone: $("apPhone").value.trim(),
           locale: $("apLocale").value.trim() || "en",
         };
+        if (stagedAccountAvatar !== undefined) body.avatar_url = stagedAccountAvatar;
         const next = $("apNewPass").value;
         if (next) {
           body.current_password = $("apCurrentPass").value;
@@ -972,6 +1117,7 @@
         const r = await api("/api/auth/me", { method: "PATCH", body: JSON.stringify(body) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) return alert(j.error || "Failed to save account profile");
+        stagedAccountAvatar = undefined;
         const me = await api("/api/auth/me");
         if (me.ok) {
           const m = await me.json();
@@ -983,11 +1129,44 @@
         TZShop.showToast("Account profile saved.", "ok");
       });
 
+      $("apPhoto").addEventListener("change", async () => {
+        const file = $("apPhoto").files && $("apPhoto").files[0];
+        $("apPhoto").value = "";
+        if (!file) return;
+        try {
+          stagedAccountAvatar = await TZShop.fileToDataUrl(file, 480, 0.78);
+          TZShop.renderAvatar($("apAvatar"), { url: stagedAccountAvatar, name: $("apName").value || "V" });
+          $("apPhotoClear").hidden = false;
+        } catch (err) {
+          alert(err.message || "Could not read photo");
+        }
+      });
+
+      $("apPhotoClear").addEventListener("click", () => {
+        stagedAccountAvatar = null;
+        TZShop.renderAvatar($("apAvatar"), { url: null, name: $("apName").value || "V" });
+        $("apPhotoClear").hidden = true;
+      });
+
       function fmtOrder(o) {
-        const lines = o.lines.map((l) => `${Number(l.qty)}x ${l.name}`).join(", ");
         const safeCustomer = TZShop.esc(o.customer_name || "Customer");
-        const safeLines = TZShop.esc(lines);
         const safePhone = TZShop.esc(o.customer_phone || "—");
+        const lineHtml = (o.lines || [])
+          .map((l) => {
+            const name = TZShop.esc(l.name || "Item");
+            const qty = Number(l.qty) || 1;
+            const detailBits = [
+              `${qty}×`,
+              l.size ? TZShop.esc(l.size) : null,
+              l.unit ? TZShop.esc(l.unit) : null,
+              l.line_total_tzs != null ? `${Number(l.line_total_tzs).toLocaleString()} TZS` : null,
+            ].filter(Boolean);
+            const img = l.image_url
+              ? `<img class="order-line__img" src="${TZShop.esc(l.image_url)}" alt="${name}" />`
+              : `<div class="order-line__ph" aria-hidden="true">${name.charAt(0) || "?"}</div>`;
+            return `<div class="order-line">${img}<div class="order-line__body"><strong>${name}</strong><span>${detailBits.join(" · ")}</span></div></div>`;
+          })
+          .join("");
         const walletPaid =
           o.status === "new" && o.payment_method && o.payment_method !== "cod" && recentPaidOrders.has(o.id);
         const payBadge = walletPaid
@@ -996,7 +1175,14 @@
         return `
           <div class="order${walletPaid ? " order--paid-wallet" : ""}" data-id="${o.id}">
             <h3>${safeCustomer} · ${o.total_tzs.toLocaleString()} TZS</h3>
-            <div class="meta">${safeLines}</div>
+            <div class="order-lines">${lineHtml || `<p class="meta">${TZShop.esc(t("vendor.noItems") || "No items")}</p>`}</div>
+            ${
+              o.delivery_fare_tzs != null
+                ? `<div class="meta"><strong>Delivery fare:</strong> ${Number(o.delivery_fare_tzs).toLocaleString()} TZS${
+                    o.delivery_distance_km != null ? ` · ${o.delivery_distance_km} km` : ""
+                  }${o.delivery_eta_min != null ? ` · ~${o.delivery_eta_min} min` : ""}</div>`
+                : ""
+            }
             <div class="meta" style="margin-top:0.35rem"><strong>${TZShop.esc(t("vendor.customerCity"))}:</strong> ${TZShop.esc(o.customer_city || "—")}${o.delivery_area ? ` · <strong>${TZShop.esc(t("vendor.customerArea"))}</strong> ${TZShop.esc(o.delivery_area)}` : ""}</div>
             <div class="meta" style="margin-top:0.2rem"><strong>${TZShop.esc(t("vendor.deliveryAddress"))}:</strong> ${TZShop.esc(o.dropoff_label || "—")}</div>
             <div><span class="badge">${TZShop.esc(o.status)}</span>${payBadge} · ${TZShop.esc(o.payment_method)} · ${safePhone}</div>
@@ -1213,6 +1399,7 @@
               ? `<span class="ts-tag ts-tag--low">Low: ${p.stock_qty}</span>`
               : `<span class="ts-tag ts-tag--stock">${p.stock_qty} in stock</span>`;
           const bulk = p.wholesale_enabled && p.wholesale_price_tzs > 0 && p.wholesale_min_qty > 0;
+          const vendorPrice = p.vendor_price_tzs != null ? p.vendor_price_tzs : Math.round(Number(p.price_tzs) / 1.1);
           const bulkTag = bulk
             ? `<span class="ts-tag ts-tag--bulk">Bulk ${Number(p.wholesale_price_tzs).toLocaleString()} ×${p.wholesale_min_qty}+</span>`
             : "";
@@ -1224,7 +1411,10 @@
             <div class="ts-prod-card__art">${art}</div>
             <div class="ts-prod-card__body">
               <p class="ts-prod-card__name">${TZShop.esc(p.name)}${p.unit ? ` <span class="muted" style="font-weight:500">/ ${TZShop.esc(p.unit)}</span>` : ""}</p>
-              <p class="ts-prod-card__meta"><strong>${Number(p.price_tzs).toLocaleString()} TZS</strong></p>
+              <p class="ts-prod-card__meta">
+                <strong>${Number(p.price_tzs).toLocaleString()} TZS</strong>
+                <span class="muted" style="display:block;font-size:0.78rem;margin-top:0.15rem">${t("vendor.yourPrice")}: ${Number(vendorPrice).toLocaleString()} TZS · ${t("vendor.appFee", { pct: APP_FEE_PCT })}: ${vendorPlatformFee(vendorPrice).toLocaleString()} TZS</span>
+              </p>
               <div class="ts-product__tags" style="margin-top:0.35rem">${stockTag}${bulkTag}${brand}${sizeTag}</div>
               <div class="ts-prod-card__row">
                 <button type="button" class="action ghost" style="padding:5px 10px;font-size:0.8rem" data-edit="${p.id}">Edit</button>
@@ -1290,7 +1480,8 @@
         stagedImage = undefined;
         $("pName").value = p.name || "";
         $("pBrand").value = p.brand || "";
-        $("pPrice").value = p.price_tzs || "";
+        $("pPrice").value = vendorPriceForForm(p);
+        renderPriceBreakdown("pPrice", "pPriceBreakdown");
         $("pUnit").value = p.unit || "";
         $("pSize").value = p.size || "";
         if (p.size) {
@@ -1313,7 +1504,8 @@
         }
         $("pWholesale").checked = Boolean(p.wholesale_enabled);
         $("wholesaleFields").style.display = p.wholesale_enabled ? "" : "none";
-        $("pWholesalePrice").value = p.wholesale_price_tzs || "";
+        $("pWholesalePrice").value = wholesaleVendorPriceForForm(p);
+        renderPriceBreakdown("pWholesalePrice", "pWholesaleBreakdown");
         $("pWholesaleMin").value = p.wholesale_min_qty || "";
         $("pPhotoPreview").innerHTML = p.image_url
           ? `<img src="${TZShop.esc(p.image_url)}" alt="" style="max-width:120px;border-radius:10px" />`
@@ -1335,13 +1527,18 @@
         $("pPhotoPreview").innerHTML = "";
         $("pWholesale").checked = false;
         $("wholesaleFields").style.display = "none";
+        renderPriceBreakdown("pPrice", "pPriceBreakdown");
+        renderPriceBreakdown("pWholesalePrice", "pWholesaleBreakdown");
         $("btnAddProduct").textContent = t("vendor.saveProduct");
         $("btnCancelEdit").style.display = "none";
       }
 
       $("pWholesale").addEventListener("change", () => {
         $("wholesaleFields").style.display = $("pWholesale").checked ? "" : "none";
+        renderPriceBreakdown("pWholesalePrice", "pWholesaleBreakdown");
       });
+      $("pPrice").addEventListener("input", () => renderPriceBreakdown("pPrice", "pPriceBreakdown"));
+      $("pWholesalePrice").addEventListener("input", () => renderPriceBreakdown("pWholesalePrice", "pWholesaleBreakdown"));
       $("btnCancelEdit").addEventListener("click", resetProductForm);
       $("pPhoto").addEventListener("change", async () => {
         const file = $("pPhoto").files[0];
@@ -1361,17 +1558,23 @@
           return;
         }
         const wholesale = $("pWholesale").checked;
+        const vendorPrice = Number($("pPrice").value);
+        if (!Number.isFinite(vendorPrice) || vendorPrice <= 0) {
+          TZShop.showToast(t("vendor.price") + " required", "err");
+          $("pPrice").focus();
+          return;
+        }
         const body = {
           name: $("pName").value,
           brand: $("pBrand").value.trim() || null,
           unit: $("pUnit").value.trim() || null,
           size: $("pSize").value.trim() || null,
           description: $("pDesc").value,
-          price_tzs: Number($("pPrice").value),
-          stock_qty: Number($("pStock").value),
+          vendor_price_tzs: vendorPrice,
+          stock_qty: $("pStock").value === "" ? 10 : Math.max(0, Number($("pStock").value) || 0),
           category_id: $("pCat").value || null,
           wholesale_enabled: wholesale,
-          wholesale_price_tzs: wholesale ? Number($("pWholesalePrice").value) || 0 : 0,
+          wholesale_vendor_price_tzs: wholesale ? Number($("pWholesalePrice").value) || 0 : 0,
           wholesale_min_qty: wholesale ? Number($("pWholesaleMin").value) || 0 : 0,
         };
         if (stagedImage !== undefined) body.image_url = stagedImage;
@@ -1382,10 +1585,15 @@
         const j = await r.json();
         if (!r.ok) return alert(j.error || "Failed");
         const wasEdit = Boolean(editingProductId);
+        const customerPrice = j.product?.price_tzs;
         resetProductForm();
         await loadProductsTable();
         await loadDashboard();
-        TZShop.showToast(wasEdit ? "Product updated" : "Product added", "ok");
+        const priceMsg =
+          customerPrice != null
+            ? ` — customers see ${Number(customerPrice).toLocaleString()} TZS on the shop`
+            : "";
+        TZShop.showToast((wasEdit ? "Product updated" : "Product added") + priceMsg, "ok");
       });
 
       $("btnAddCat").addEventListener("click", async () => {
@@ -1446,23 +1654,30 @@
         const methodLabels = { mpesa: "M-Pesa", tigopesa: "Tigo Pesa", airtel: "Airtel Money", halopesa: "HaloPesa", bank: "Bank transfer" };
         $("payReqList").innerHTML = reqs
           .map((pr) => {
+            const isPayout = pr.direction === "to_vendor";
             const badge =
               pr.status === "paid"
                 ? '<span class="badge badge--pay">Paid</span>'
                 : pr.status === "cancelled"
                   ? '<span class="badge">Cancelled</span>'
                   : '<span class="badge" style="background:#fef3c7;color:#92400e">Pending</span>';
-            const dest = pr.settlement_number ? ` · pay to ${TZShop.esc(pr.settlement_number)}` : "";
+            const dest = pr.settlement_number ? ` · ${isPayout ? "to" : "pay to"} ${TZShop.esc(pr.settlement_number)}` : "";
+            const salesBits =
+              isPayout && (pr.gross_sales_tzs != null || pr.platform_fees_tzs != null)
+                ? ` · gross ${Number(pr.gross_sales_tzs || 0).toLocaleString()} − fee ${Number(pr.platform_fees_tzs || 0).toLocaleString()}`
+                : "";
             const action =
-              pr.status === "pending"
+              !isPayout && pr.status === "pending"
                 ? `<button type="button" class="action" style="padding:6px 12px;font-size:0.82rem" data-pay="${pr.id}">Mark as paid</button>`
-                : pr.reference
-                  ? `<span class="muted" style="font-size:0.8rem">Ref: ${TZShop.esc(pr.reference)}</span>`
-                  : "";
+                : isPayout && pr.status === "pending"
+                  ? `<span class="muted" style="font-size:0.8rem">Waiting for admin payout</span>`
+                  : pr.reference
+                    ? `<span class="muted" style="font-size:0.8rem">Ref: ${TZShop.esc(pr.reference)}</span>`
+                    : "";
             return `<div class="ts-app-card" style="padding:0.85rem;margin-bottom:0.6rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;justify-content:space-between">
               <div>
                 <div style="font-size:1.05rem;font-weight:700">${Number(pr.amount_tzs).toLocaleString()} TZS ${badge}</div>
-                <div class="muted" style="font-size:0.82rem">${TZShop.esc(pr.reason)} · ${TZShop.esc(pr.due_label)} · ${TZShop.esc(methodLabels[pr.method] || pr.method)}${dest}</div>
+                <div class="muted" style="font-size:0.82rem">${TZShop.esc(pr.reason)} · ${TZShop.esc(pr.due_label)} · ${TZShop.esc(methodLabels[pr.method] || pr.method)}${dest}${salesBits}</div>
               </div>
               ${action}
             </div>`;

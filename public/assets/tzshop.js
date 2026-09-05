@@ -74,6 +74,7 @@
   function apiFetch(path, options = {}) {
     return fetch(path, {
       credentials: "same-origin",
+      cache: "no-store",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       ...options,
     });
@@ -100,6 +101,97 @@
     return Boolean(user && user.role === "admin");
   }
 
+  let deferredInstallPrompt = null;
+
+  function initInstallPrompt(buttonId = "btnInstallApp") {
+    const btn = document.getElementById(buttonId);
+    if (!btn) return;
+
+    const show = () => {
+      btn.hidden = false;
+    };
+    const hide = () => {
+      btn.hidden = true;
+    };
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      show();
+    });
+
+    btn.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      if (outcome === "accepted") hide();
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      hide();
+      showToast(t("nav.installDone") || "App installed", "success");
+    });
+
+    if (window.matchMedia("(display-mode: standalone)").matches) hide();
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    });
+  }
+
+  registerServiceWorker();
+
+  /** Downscale an image file to a compact JPEG data URL (stays under API body limit). */
+  function fileToDataUrl(file, maxDim = 480, quality = 0.78) {
+    return new Promise((resolve, reject) => {
+      if (!file || !String(file.type || "").startsWith("image/")) {
+        reject(new Error("Please choose an image file"));
+        return;
+      }
+      const fr = new FileReader();
+      fr.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const scale = maxDim / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = () => reject(new Error("Could not read image"));
+        img.src = fr.result;
+      };
+      fr.onerror = () => reject(new Error("Could not read image"));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /** Fill an avatar host with photo or name initial. */
+  function renderAvatar(el, { url, name } = {}) {
+    if (!el) return;
+    const initial = String(name || "G").charAt(0).toUpperCase() || "G";
+    if (url) {
+      el.classList.add("has-photo");
+      el.innerHTML = `<img src="${esc(url)}" alt="" />`;
+      el.setAttribute("aria-hidden", "true");
+    } else {
+      el.classList.remove("has-photo");
+      el.textContent = initial;
+      el.setAttribute("aria-hidden", "true");
+    }
+  }
+
   window.TZShop = {
     showToast,
     moneyTzs,
@@ -113,8 +205,11 @@
     applyDataI18n,
     roleLabel,
     apiFetch,
+    fileToDataUrl,
+    renderAvatar,
     canAccessVendor,
     canAccessDriver,
     canAccessAdmin,
+    initInstallPrompt,
   };
 })();

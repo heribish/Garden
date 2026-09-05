@@ -38,15 +38,21 @@ import {
   listVendorProducts,
   listVendorNotifications,
   ackVendorNotifications,
+  quoteDeliveryFare,
   notifyVendorPaymentReceived,
   normalizeMsisdnTz,
   rejectVendorApplication,
+  removeVendorApplication,
   requestPayout,
   createVendorPaymentRequest,
   listVendorPaymentRequests,
   listAllPaymentRequests,
   markPaymentRequestPaid,
   cancelPaymentRequest,
+  generateEndOfDayVendorPayoutRequests,
+  getEndOfDayFinanceSnapshot,
+  payVendorEndOfDayRequest,
+  utcDayKey,
   setRefundRequestStatus,
   setVendorShopOpen,
   updateVendorProfile,
@@ -57,6 +63,26 @@ import {
 } from "./store.js";
 import { transitionOrder } from "./orderMachine.js";
 import { getAdapter } from "./payments/adapters.js";
+import {
+  getMpesaSettings,
+  isMpesaCheckoutEnabled,
+  isWalletEnvGateOpen,
+  updateMpesaSettings,
+  validateMpesaConfig,
+} from "./mpesaSettings.js";
+import { getBankSettings, getPublicBankCheckout, isBankCheckoutEnabled, updateBankSettings } from "./bankSettings.js";
+import {
+  getPayoutMpesaSettings,
+  getPayoutMpesaSummary,
+  updatePayoutMpesaSettings,
+} from "./payoutAccountSettings.js";
+import {
+  addDeliveryCity,
+  getDeliveryCitiesMeta,
+  listDeliveryCities,
+  removeDeliveryCity,
+  resetDeliveryCities,
+} from "./deliveryCities.js";
 import * as drv from "./drivers.js";
 import * as admin from "./admin.js";
 import {
@@ -81,6 +107,7 @@ import {
   getOrderForCustomer,
   listDriverApplications,
   rejectDriverApplication,
+  removeDriverApplication,
 } from "./account.js";
 import {
   notifyDriverApplicationApproved,
@@ -126,6 +153,7 @@ function json(res, status, body, extraHeaders = {}) {
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(data),
+    "Cache-Control": "no-store",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
@@ -195,6 +223,12 @@ function moneySafe(v, fallback) {
   const fb = Math.round(Number(fallback) || 0);
   if (!Number.isFinite(n) || n <= 0) return fb;
   return Math.round(n);
+}
+
+function requestBaseUrl(req) {
+  const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim();
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "127.0.0.1:3780").split(",")[0].trim();
+  return `${proto}://${host}`;
 }
 
 async function sendFile(res, filePath, contentType) {
@@ -356,13 +390,38 @@ const signupSchema = z
     admin_code: z.string().trim().min(1).max(64).optional(),
     business_name: z.string().trim().min(2).max(160).optional(),
     zone: z.string().trim().min(2).max(80).optional(),
+    national_id: z.string().trim().min(5).max(40).optional(),
+    license_number: z.string().trim().min(4).max(40).optional(),
+    license_expiry: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    vehicle_type: z.string().trim().min(2).max(40).optional(),
+    vehicle_make: z.string().trim().min(2).max(60).optional(),
+    vehicle_model: z.string().trim().min(1).max(60).optional(),
+    vehicle_year: z.coerce.number().int().min(1980).max(new Date().getFullYear() + 1).optional(),
+    vehicle_plate: z.string().trim().min(3).max(20).optional(),
+    vehicle_color: z.string().trim().max(40).optional(),
+    emergency_contact: z.string().trim().max(120).optional(),
   })
   .refine((v) => Boolean(v.phone || v.email), { message: "phone or email required" })
   .refine((v) => v.role !== "vendor" || Boolean(v.business_name), {
     message: "business_name required for vendor signup",
   })
   .refine((v) => v.role !== "vendor" || Boolean(v.zone), { message: "zone required for vendor signup" })
-  .refine((v) => v.role !== "vendor" || Boolean(v.phone), { message: "phone required for vendor signup" });
+  .refine((v) => v.role !== "vendor" || Boolean(v.phone), { message: "phone required for vendor signup" })
+  .refine((v) => v.role !== "driver" || Boolean(v.phone), { message: "phone required for driver signup" })
+  .refine((v) => v.role !== "driver" || Boolean(v.national_id), { message: "national_id required for driver signup" })
+  .refine((v) => v.role !== "driver" || Boolean(v.license_number), {
+    message: "license_number required for driver signup",
+  })
+  .refine((v) => v.role !== "driver" || Boolean(v.license_expiry), {
+    message: "license_expiry required for driver signup",
+  })
+  .refine((v) => v.role !== "driver" || Boolean(v.vehicle_type), { message: "vehicle_type required for driver signup" })
+  .refine((v) => v.role !== "driver" || Boolean(v.vehicle_make), { message: "vehicle_make required for driver signup" })
+  .refine((v) => v.role !== "driver" || Boolean(v.vehicle_model), { message: "vehicle_model required for driver signup" })
+  .refine((v) => v.role !== "driver" || v.vehicle_year != null, { message: "vehicle_year (year made) required for driver signup" })
+  .refine((v) => v.role !== "driver" || Boolean(v.vehicle_plate), {
+    message: "vehicle_plate required for driver signup",
+  });
 
 const loginSchema = z
   .object({
@@ -381,7 +440,7 @@ const orderCreateSchema = z.object({
   dropoff_lat: z.number().finite().optional(),
   dropoff_lng: z.number().finite().optional(),
   items: z.array(z.object({ product_id: z.string().trim().min(1).max(64), qty: z.number().int().min(1).max(999) })).min(1),
-  payment_method: z.enum(["cod", "mpesa", "airtel_money", "tigo_pesa", "halopesa"]),
+  payment_method: z.enum(["cod", "mpesa", "airtel_money", "tigo_pesa", "halopesa", "bank"]),
   vendor_id: z.string().trim().min(1).max(64),
 });
 
@@ -398,6 +457,7 @@ const profilePatchSchema = z
     phone: z.string().trim().min(8).max(20).optional(),
     email: z.string().trim().email().optional(),
     locale: z.string().trim().min(2).max(10).optional(),
+    avatar_url: z.union([z.string().max(220000), z.null()]).optional(),
     current_password: z.string().min(1).max(200).optional(),
     new_password: z.string().min(8).max(200).optional(),
   })
@@ -414,6 +474,9 @@ const vendorProfilePatchSchema = z
     pickup_label: z.string().trim().min(3).max(300).optional(),
     shop_phone: z.string().trim().min(8).max(24).optional(),
     shop_open: z.boolean().optional(),
+    settlement_method: z.string().trim().min(2).max(40).optional(),
+    settlement_number: z.string().trim().max(80).optional(),
+    logo_url: z.union([z.string().max(220000), z.null()]).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No vendor profile fields provided" });
 
@@ -535,13 +598,42 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (req.method === "GET" && url.pathname === "/api/public-config") {
-      return json(res, 200, { wallet_payments_enabled: WALLET_PAYMENTS_ENABLED });
+      return json(res, 200, {
+        wallet_payments_enabled: WALLET_PAYMENTS_ENABLED,
+        mpesa_enabled: isMpesaCheckoutEnabled(),
+        bank_enabled: isBankCheckoutEnabled(),
+        bank: getPublicBankCheckout(),
+        delivery_cities: listDeliveryCities(),
+      });
+    }
+    if (req.method === "GET" && url.pathname === "/api/delivery/cities") {
+      return json(res, 200, { cities: listDeliveryCities() });
     }
     if (req.method === "POST" && url.pathname === "/api/auth/signup") {
       const body = await readBody(req);
       assertAllowedFields(
         body,
-        new Set(["name", "phone", "email", "password", "locale", "role", "admin_code", "business_name", "zone"])
+        new Set([
+          "name",
+          "phone",
+          "email",
+          "password",
+          "locale",
+          "role",
+          "admin_code",
+          "business_name",
+          "zone",
+          "national_id",
+          "license_number",
+          "license_expiry",
+          "vehicle_type",
+          "vehicle_make",
+          "vehicle_model",
+          "vehicle_year",
+          "vehicle_plate",
+          "vehicle_color",
+          "emergency_contact",
+        ])
       );
       const data = parseWithSchema(signupSchema, body);
       let role = data.role || "shopper";
@@ -569,6 +661,24 @@ const server = http.createServer(async (req, res) => {
           user_id: user.id,
         });
       }
+      if (role === "driver") {
+        driver_application = await createDriverApplication({
+          user_id: user.id,
+          user_snapshot: user,
+          full_name: data.name,
+          phone: data.phone,
+          national_id: data.national_id,
+          license_number: data.license_number,
+          license_expiry: data.license_expiry,
+          vehicle_type: data.vehicle_type,
+          vehicle_make: data.vehicle_make,
+          vehicle_model: data.vehicle_model,
+          vehicle_year: data.vehicle_year,
+          vehicle_plate: data.vehicle_plate,
+          vehicle_color: data.vehicle_color,
+          emergency_contact: data.emergency_contact,
+        });
+      }
 
       const sid = await createSession(user.id);
       setSessionCookie(res, sid);
@@ -580,7 +690,7 @@ const server = http.createServer(async (req, res) => {
           role === "vendor"
             ? "vendor_pending_approval"
             : role === "driver"
-              ? "complete_driver_verification"
+              ? "driver_pending_approval"
               : role === "admin"
                 ? "open_admin"
                 : "shop",
@@ -609,13 +719,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "PATCH" && url.pathname === "/api/auth/me") {
       requireAuth(actor);
       const body = await readBody(req);
-      assertAllowedFields(body, new Set(["name", "phone", "email", "locale", "current_password", "new_password"]));
+      assertAllowedFields(body, new Set(["name", "phone", "email", "locale", "avatar_url", "current_password", "new_password"]));
       const parsed = parseWithSchema(profilePatchSchema, body);
       const profileInput = {
         name: parsed.name,
         phone: parsed.phone,
         email: parsed.email,
         locale: parsed.locale,
+        avatar_url: parsed.avatar_url,
       };
       const hasProfileChanges = Object.values(profileInput).some((x) => x !== undefined);
       const user = hasProfileChanges ? await updateUserProfile(actor.id, profileInput) : actor;
@@ -658,6 +769,9 @@ const server = http.createServer(async (req, res) => {
           "license_number",
           "license_expiry",
           "vehicle_type",
+          "vehicle_make",
+          "vehicle_model",
+          "vehicle_year",
           "vehicle_plate",
           "vehicle_color",
           "emergency_contact",
@@ -719,6 +833,24 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { products: listProducts() });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/delivery/quote") {
+      const vendorId = url.searchParams.get("vendor_id");
+      const lat = Number(url.searchParams.get("lat"));
+      const lng = Number(url.searchParams.get("lng"));
+      const vehicle = url.searchParams.get("vehicle_class") || "boda";
+      try {
+        const quote = quoteDeliveryFare({
+          vendor_id: vendorId,
+          dropoff_lat: lat,
+          dropoff_lng: lng,
+          vehicle_class: vehicle,
+        });
+        return json(res, 200, { quote });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+
     if (req.method === "POST" && url.pathname === "/api/orders") {
       requireAuth(actor);
       const body = await readBody(req);
@@ -738,8 +870,15 @@ const server = http.createServer(async (req, res) => {
         ])
       );
       const parsed = parseWithSchema(orderCreateSchema, body);
+      if (parsed.payment_method === "bank" && !isBankCheckoutEnabled()) {
+        return json(res, 503, {
+          error: "Bank transfer checkout is not available. Choose another payment method.",
+        });
+      }
       const order = createOrder({ ...parsed, customer_user_id: actor.id });
-      return json(res, 201, { order });
+      const bank =
+        parsed.payment_method === "bank" ? getPublicBankCheckout() : undefined;
+      return json(res, 201, { order, ...(bank ? { bank } : {}) });
     }
 
     if (req.method === "POST" && url.pathname === "/api/vendor-applications") {
@@ -769,6 +908,11 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["order_id", "provider", "msisdn", "idempotency_key"]));
       const { order_id, provider, msisdn, idempotency_key } = parseWithSchema(paymentInitSchema, body);
+      if (provider === "mpesa" && !isMpesaCheckoutEnabled()) {
+        return json(res, 503, {
+          error: "M-Pesa checkout is disabled. Choose cash on delivery or ask an admin to enable M-Pesa in settings.",
+        });
+      }
       normalizeMsisdnTz(msisdn);
       const order = getOrder(order_id);
       if (!order) return json(res, 404, { error: "order not found" });
@@ -785,6 +929,55 @@ const server = http.createServer(async (req, res) => {
       const adapter = getAdapter(provider);
       const instructions = adapter.initiatePayment({ payment });
       return json(res, 201, { payment, instructions, order });
+    }
+
+    const payConfirmDemo =
+      req.method === "POST" && url.pathname.match(/^\/api\/payments\/([^/]+)\/confirm-demo$/);
+    if (payConfirmDemo) {
+      if (!DEV_TOOLS) return json(res, 404, { error: "not found" });
+      requireAuth(actor);
+      if (!WALLET_PAYMENTS_ENABLED) return json(res, 503, { error: "Mobile-money payments are not available" });
+      const paymentId = payConfirmDemo[1];
+      const body = await readBody(req);
+      assertAllowedFields(body, new Set(["status"]));
+      const status = String(body.status || "paid");
+      if (status !== "paid" && status !== "failed") {
+        return json(res, 400, { error: "status must be paid or failed" });
+      }
+      const payment = getPayment(paymentId);
+      if (!payment) return json(res, 404, { error: "payment not found" });
+      const order = getOrder(payment.order_id);
+      if (!order) return json(res, 404, { error: "order not found" });
+      if (!canAccessOrder(actor, order)) return json(res, 403, { error: "Forbidden" });
+      if (payment.status === "paid" && status === "paid") {
+        return json(res, 200, { ok: true, order, payment, already: true });
+      }
+      if (payment.status !== "pending") {
+        return json(res, 409, { error: `payment not pending (${payment.status})` });
+      }
+      const event_id = `demo_${crypto.randomBytes(6).toString("hex")}`;
+      await appendPaymentEventUnique(event_id);
+      if (status === "paid") {
+        updatePayment(payment.id, {
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          provider_reference: event_id,
+        });
+        if (order.status === "payment_pending") transitionOrder(order, "paid");
+        if (order.status === "paid") {
+          notifyVendorPaymentReceived(order, getPayment(payment.id));
+          transitionOrder(order, "new");
+        }
+        return json(res, 200, {
+          ok: true,
+          order: getOrder(order.id),
+          payment: getPayment(payment.id),
+          vendor_notified: true,
+        });
+      }
+      updatePayment(payment.id, { status: "failed", failed_at: new Date().toISOString() });
+      if (order.status === "payment_pending") transitionOrder(order, "cancelled");
+      return json(res, 200, { ok: true, order: getOrder(order.id), payment: getPayment(payment.id) });
     }
 
     const hook = req.method === "POST" && url.pathname.match(/^\/api\/webhooks\/([^/]+)$/);
@@ -879,7 +1072,10 @@ const server = http.createServer(async (req, res) => {
       if (actor.role === "vendor" && actor.vendor_id !== vendorId) return json(res, 403, { error: "Forbidden" });
       if (!getVendor(vendorId)) return json(res, 404, { error: "vendor not found" });
       const body = await readBody(req);
-      assertAllowedFields(body, new Set(["name", "zone", "pickup_label", "shop_phone", "shop_open"]));
+      assertAllowedFields(
+        body,
+        new Set(["name", "zone", "pickup_label", "shop_phone", "shop_open", "settlement_method", "settlement_number", "logo_url"])
+      );
       const parsed = parseWithSchema(vendorProfilePatchSchema, body);
       const vendor = updateVendorProfile(vendorId, parsed);
       return json(res, 200, { vendor });
@@ -1033,6 +1229,35 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { driver: drv.getDriver(id) });
     }
 
+    const drvGet = req.method === "GET" && url.pathname.match(/^\/api\/drivers\/([^/]+)$/);
+    if (drvGet) {
+      assertDriverSelfOrAdmin(actor, drvGet[1]);
+      const d = drv.getDriver(drvGet[1]);
+      if (!d) throw new Error("Driver not found");
+      return json(res, 200, { driver: drv.publicDriverProfile(d) });
+    }
+
+    const drvVehicle = req.method === "PATCH" && url.pathname.match(/^\/api\/drivers\/([^/]+)\/vehicle$/);
+    if (drvVehicle) {
+      assertDriverSelfOrAdmin(actor, drvVehicle[1]);
+      const body = await readBody(req);
+      assertAllowedFields(
+        body,
+        new Set([
+          "vehicle_type",
+          "vehicle_make",
+          "vehicle_model",
+          "vehicle_year",
+          "vehicle_plate",
+          "vehicle_color",
+          "license_number",
+          "license_expiry",
+        ])
+      );
+      const driver = drv.updateDriverVehicle(drvVehicle[1], body);
+      return json(res, 200, { driver });
+    }
+
     const drvOffer = req.method === "GET" && url.pathname.match(/^\/api\/drivers\/([^/]+)\/offer$/);
     if (drvOffer) {
       assertDriverSelfOrAdmin(actor, drvOffer[1]);
@@ -1109,6 +1334,12 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const out = drv.requestDriverPayout(drvPay[1], body);
       return json(res, 201, out);
+    }
+
+    const drvPrList = req.method === "GET" && url.pathname.match(/^\/api\/drivers\/([^/]+)\/payment-requests$/);
+    if (drvPrList) {
+      assertDriverSelfOrAdmin(actor, drvPrList[1]);
+      return json(res, 200, { requests: drv.listDriverPaymentRequests(drvPrList[1]) });
     }
 
     if (req.method === "POST" && url.pathname === "/api/dev/driver-rating" && DEV_TOOLS) {
@@ -1274,11 +1505,15 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/admin/applications") {
       requireRole(actor, ["admin"]);
-      return json(res, 200, { applications: listVendorApplications() });
+      // Default admin queue: pending only (rejected are hidden unless status=rejected|all)
+      const statusParam = url.searchParams.get("status");
+      const status = statusParam === "all" ? undefined : statusParam || "pending";
+      return json(res, 200, { applications: listVendorApplications({ status }) });
     }
     if (req.method === "GET" && url.pathname === "/api/admin/driver-applications") {
       requireRole(actor, ["admin"]);
-      const status = url.searchParams.get("status") || undefined;
+      const statusParam = url.searchParams.get("status");
+      const status = statusParam === "all" ? undefined : statusParam || "pending";
       return json(res, 200, { applications: await listDriverApplications({ status }) });
     }
     const adDrvOk = req.method === "POST" && url.pathname.match(/^\/api\/admin\/driver-applications\/([^/]+)\/approve$/);
@@ -1301,6 +1536,15 @@ const server = http.createServer(async (req, res) => {
         console.error("notify driver rejected", e)
       );
       return json(res, 200, { application: app });
+    }
+    const adDrvRm = req.method === "DELETE" && url.pathname.match(/^\/api\/admin\/driver-applications\/([^/]+)$/);
+    if (adDrvRm) {
+      requireRole(actor, ["admin"]);
+      try {
+        return json(res, 200, await removeDriverApplication(adDrvRm[1]));
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
     }
     const adAppOk = req.method === "POST" && url.pathname.match(/^\/api\/admin\/applications\/([^/]+)\/approve$/);
     if (adAppOk) {
@@ -1352,6 +1596,15 @@ const server = http.createServer(async (req, res) => {
       }).catch((e) => console.error("notify vendor rejected", e));
       return json(res, 200, { application: out });
     }
+    const adAppRm = req.method === "DELETE" && url.pathname.match(/^\/api\/admin\/applications\/([^/]+)$/);
+    if (adAppRm) {
+      requireRole(actor, ["admin"]);
+      try {
+        return json(res, 200, removeVendorApplication(adAppRm[1]));
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
 
     if (req.method === "GET" && url.pathname === "/api/admin/support/conversations") {
       requireRole(actor, ["admin"]);
@@ -1385,10 +1638,61 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { conversation });
     }
 
-    // Admin: request settlement payments from vendors (end of shift)
+    // Admin: end-of-day vendor + driver payouts (auto amount = that day's net earnings)
+    if (req.method === "GET" && url.pathname === "/api/admin/finance/end-of-day") {
+      requireRole(actor, ["admin"]);
+      const day = url.searchParams.get("day") || utcDayKey();
+      const vendors = getEndOfDayFinanceSnapshot(day);
+      const driversSnap = drv.getEndOfDayDriverFinanceSnapshot(day);
+      return json(res, 200, {
+        ...vendors,
+        drivers: driversSnap.drivers,
+        driver_requests: driversSnap.requests,
+        driver_totals: driversSnap.totals,
+        payout_mpesa: getPayoutMpesaSummary(),
+      });
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin/finance/end-of-day/generate") {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req).catch(() => ({}));
+      const day = String(body?.day || url.searchParams.get("day") || utcDayKey()).slice(0, 10);
+      const vendors = generateEndOfDayVendorPayoutRequests(day);
+      const driversOut = drv.generateEndOfDayDriverPayoutRequests(day);
+      return json(res, 200, {
+        day_key: day,
+        created: [...(vendors.created || []), ...(driversOut.created || [])],
+        skipped: [...(vendors.skipped || []), ...(driversOut.skipped || [])],
+        vendors: vendors.vendors,
+        requests: vendors.requests,
+        drivers: driversOut.drivers,
+        driver_requests: driversOut.requests,
+        vendor_created: vendors.created,
+        driver_created: driversOut.created,
+      });
+    }
+    const adPrPayOut =
+      req.method === "POST" && url.pathname.match(/^\/api\/admin\/payment-requests\/([^/]+)\/pay-out$/);
+    if (adPrPayOut) {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req).catch(() => ({}));
+      try {
+        if (drv.getDriverPaymentRequest(adPrPayOut[1])) {
+          const out = drv.payDriverEndOfDayRequest(adPrPayOut[1], body || {});
+          return json(res, 200, out);
+        }
+        const out = payVendorEndOfDayRequest(adPrPayOut[1], body || {});
+        return json(res, 200, out);
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+
+    // Admin: list settlement / payout payment requests
     if (req.method === "GET" && url.pathname === "/api/admin/payment-requests") {
       requireRole(actor, ["admin"]);
-      return json(res, 200, { requests: listAllPaymentRequests() });
+      return json(res, 200, {
+        requests: [...listAllPaymentRequests(), ...drv.listAllDriverPaymentRequests()],
+      });
     }
     const adPrCreate = req.method === "POST" && url.pathname.match(/^\/api\/admin\/vendors\/([^/]+)\/payment-requests$/);
     if (adPrCreate) {
@@ -1405,6 +1709,9 @@ const server = http.createServer(async (req, res) => {
     if (adPrCancel) {
       requireRole(actor, ["admin"]);
       try {
+        if (drv.getDriverPaymentRequest(adPrCancel[1])) {
+          return json(res, 200, { request: drv.cancelDriverPaymentRequest(adPrCancel[1]) });
+        }
         return json(res, 200, { request: cancelPaymentRequest(adPrCancel[1]) });
       } catch (e) {
         return json(res, 400, { error: String(e.message || e) });
@@ -1436,6 +1743,83 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const out = setCommissionForCategory(body.category_id, body.bps);
       return json(res, 200, out);
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/settings/mpesa") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, { settings: getMpesaSettings({ baseUrl: requestBaseUrl(req) }) });
+    }
+    if (req.method === "PATCH" && url.pathname === "/api/admin/settings/mpesa") {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      updateMpesaSettings(body, { actorId: actor.id });
+      return json(res, 200, { settings: getMpesaSettings({ baseUrl: requestBaseUrl(req) }) });
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin/settings/mpesa/test") {
+      requireRole(actor, ["admin"]);
+      const validation = validateMpesaConfig();
+      return json(res, 200, {
+        ok: validation.ok,
+        validation,
+        checkout_available: isMpesaCheckoutEnabled(),
+        wallet_env_gate_open: isWalletEnvGateOpen(),
+      });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/settings/bank") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, { settings: getBankSettings() });
+    }
+    if (req.method === "PATCH" && url.pathname === "/api/admin/settings/bank") {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      updateBankSettings(body, { actorId: actor.id });
+      return json(res, 200, { settings: getBankSettings() });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/settings/payout-mpesa") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, { settings: getPayoutMpesaSettings(), summary: getPayoutMpesaSummary() });
+    }
+    if (req.method === "PATCH" && url.pathname === "/api/admin/settings/payout-mpesa") {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      try {
+        const settings = updatePayoutMpesaSettings(body, { actorId: actor.id });
+        return json(res, 200, { settings, summary: getPayoutMpesaSummary() });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/settings/delivery-cities") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, getDeliveryCitiesMeta());
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin/settings/delivery-cities") {
+      requireRole(actor, ["admin"]);
+      const body = await readBody(req);
+      try {
+        const city = addDeliveryCity(body || {}, { actorId: actor.id });
+        return json(res, 201, { city, ...getDeliveryCitiesMeta() });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+    const adCityDel =
+      req.method === "DELETE" && url.pathname.match(/^\/api\/admin\/settings\/delivery-cities\/([^/]+)$/);
+    if (adCityDel) {
+      requireRole(actor, ["admin"]);
+      try {
+        const out = removeDeliveryCity(decodeURIComponent(adCityDel[1]), { actorId: actor.id });
+        return json(res, 200, { ...out, ...getDeliveryCitiesMeta() });
+      } catch (e) {
+        return json(res, 400, { error: String(e.message || e) });
+      }
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin/settings/delivery-cities/reset") {
+      requireRole(actor, ["admin"]);
+      return json(res, 200, resetDeliveryCities({ actorId: actor.id }));
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/refunds") {

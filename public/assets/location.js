@@ -155,5 +155,22 @@
     inferAreaFromAddress,
     inferDarArea,
     resolveLocation,
+    setCities(list) {
+      if (!Array.isArray(list) || !list.length) return CITIES;
+      CITIES.length = 0;
+      for (const c of list) {
+        if (!c || !c.id || !c.label) continue;
+        CITIES.push({
+          id: String(c.id),
+          label: String(c.label),
+          lat: Number(c.lat),
+          lng: Number(c.lng),
+        });
+      }
+      if (!CITIES.length) {
+        CITIES.push({ id: "dar", label: "Dar es Salaam", lat: -6.7924, lng: 39.2083 });
+      }
+      return CITIES;
+    },
   };
 })();

@@ -3,8 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d9488" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="garden" />
     <title>garden — Admin dashboard</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -198,6 +203,204 @@
         font-size: 0.78rem;
         max-height: 220px;
       }
+      /* M-Pesa settings — professional layout */
+      .mpesa-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #1d4d45;
+      }
+      .mpesa-head__brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .mpesa-head__logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #16a34a, #15803d);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 0.72rem;
+        letter-spacing: -0.02em;
+        color: #fff;
+        box-shadow: 0 8px 20px -8px rgba(22, 163, 74, 0.7);
+      }
+      .mpesa-head h2 {
+        margin: 0 0 4px;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #f0fdfa;
+      }
+      .mpesa-head p {
+        margin: 0;
+        color: #8fbdb4;
+        font-size: 0.88rem;
+        max-width: 28rem;
+        line-height: 1.45;
+      }
+      .mpesa-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .mpesa-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border: 1px solid #1d4d45;
+        background: #0a2622;
+      }
+      .mpesa-badge__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #64748b;
+      }
+      .mpesa-badge--on .mpesa-badge__dot { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.6); }
+      .mpesa-badge--off .mpesa-badge__dot { background: #fbbf24; }
+      .mpesa-badge--live { border-color: rgba(52, 211, 153, 0.35); color: #a7f3d0; }
+      .mpesa-badge--sandbox { border-color: rgba(251, 191, 36, 0.35); color: #fde68a; }
+      .mpesa-layout {
+        display: grid;
+        gap: 20px;
+        max-width: 32rem;
+      }
+      .mpesa-card {
+        background: #0a2622;
+        border: 1px solid #1d4d45;
+        border-radius: 14px;
+        padding: 18px;
+      }
+      .mpesa-card__title {
+        margin: 0 0 14px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #5eead4;
+      }
+      .mpesa-fields {
+        display: grid;
+        gap: 14px;
+      }
+      .mpesa-field label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #cdeae3;
+      }
+      .mpesa-field label span {
+        font-weight: 400;
+        color: #8fbdb4;
+      }
+      .mpesa-field input,
+      .mpesa-field select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+      .mpesa-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        background: rgba(20, 184, 166, 0.06);
+        border: 1px solid rgba(45, 212, 191, 0.2);
+        border-radius: 12px;
+      }
+      .mpesa-toggle-row strong {
+        display: block;
+        font-size: 0.92rem;
+        margin-bottom: 2px;
+      }
+      .mpesa-toggle-row span {
+        font-size: 0.8rem;
+        color: #8fbdb4;
+      }
+      .mpesa-switch {
+        position: relative;
+        width: 48px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+      .mpesa-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
+      }
+      .mpesa-switch__track {
+        position: absolute;
+        inset: 0;
+        background: #1d4d45;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .mpesa-switch__track::after {
+        content: "";
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        left: 3px;
+        top: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform 0.2s;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      }
+      .mpesa-switch input:checked + .mpesa-switch__track {
+        background: linear-gradient(180deg, #14b8a6, #0d9488);
+      }
+      .mpesa-switch input:checked + .mpesa-switch__track::after {
+        transform: translateX(20px);
+      }
+      .mpesa-live-panel {
+        margin-top: 4px;
+        padding-top: 14px;
+        border-top: 1px dashed #1d4d45;
+      }
+      .mpesa-live-panel[hidden] { display: none !important; }
+      .mpesa-creds-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .mpesa-cred-pill {
+        font-size: 0.74rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #1d4d45;
+        color: #8fbdb4;
+      }
+      .mpesa-cred-pill.ok { border-color: rgba(52, 211, 153, 0.4); color: #6ee7b7; }
+      .mpesa-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid #1d4d45;
+      }
+      .mpesa-actions .primary {
+        padding: 10px 22px;
+        font-size: 0.88rem;
+      }
     </style>
   </head>
   <body class="ts-skin-dark">
@@ -233,6 +436,7 @@
       <button type="button" data-tab="support">Support<span class="ts-tabbadge" id="supTabBadge"></span></button>
       <button type="button" data-tab="apps">Applications</button>
       <button type="button" data-tab="finance">Finance</button>
+      <button type="button" data-tab="mpesa">M-Pesa</button>
       <button type="button" data-tab="refunds">Refunds</button>
     </div>
 
@@ -368,29 +572,88 @@
     </section>
 
     <section class="panel" id="panel-apps">
-      <h3 style="margin: 0 0 0.75rem; font-size: 1rem">Vendor applications</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+        <h3 style="margin:0;font-size:1rem">Applications</h3>
+        <div class="row" style="gap:6px">
+          <button type="button" class="small primary" id="appFilterPending">Pending</button>
+          <button type="button" class="small" id="appFilterRejected">Rejected</button>
+        </div>
+      </div>
+      <p class="muted" id="appFilterHint" style="margin:0 0 0.75rem">Showing applications waiting for your review. Rejected applicants are hidden from this queue.</p>
+      <h3 style="margin: 0 0 0.75rem; font-size: 0.95rem">Vendor applications</h3>
       <div id="appList"></div>
-      <h3 style="margin: 1.25rem 0 0.75rem; font-size: 1rem">Driver verification</h3>
+      <h3 style="margin: 1.25rem 0 0.75rem; font-size: 0.95rem">Driver verification</h3>
       <div id="drvAppList"></div>
     </section>
 
     <section class="panel" id="panel-finance">
       <div id="finSum"></div>
 
-      <h3 style="font-size: 0.95rem">Request settlement from vendor (end of shift)</h3>
-      <p class="muted">Ask a vendor to pay the platform (e.g. commission collected in cash). They confirm it from their account.</p>
-      <div class="grid">
-        <select id="prVendor"></select>
-        <input id="prAmt" type="number" placeholder="amount TZS" />
-        <input id="prReason" placeholder="reason (e.g. Shift commission)" />
-        <select id="prDue">
-          <option value="End of shift">End of shift</option>
-          <option value="End of day">End of day</option>
-          <option value="Immediate">Immediate</option>
-        </select>
-        <button type="button" class="primary small" id="btnPR">Request payment</button>
+      <div class="mpesa-card" style="margin: 1rem 0 1.25rem; padding: 1rem; border: 1px solid var(--tz-border, #1d4d45); border-radius: 12px; background: var(--tz-elev, #0f1f1c)">
+        <h3 style="font-size: 0.95rem; margin: 0 0 0.35rem">M-Pesa payout account</h3>
+        <p class="muted" style="margin: 0 0 0.85rem; font-size: 0.82rem">
+          The Garden wallet that <strong>pays vendors and drivers</strong> their daily end-of-day amounts.
+          This is separate from customer checkout M-Pesa (Admin → M-Pesa).
+        </p>
+        <div id="payoutMpesaStatus" class="muted" style="font-size: 0.8rem; margin-bottom: 0.75rem" role="status"></div>
+        <div class="grid" style="align-items: end">
+          <div>
+            <label class="muted" for="poMpEnabled">Use for daily payouts</label>
+            <label style="display:flex;align-items:center;gap:0.45rem;margin-top:0.35rem;cursor:pointer">
+              <input type="checkbox" id="poMpEnabled" />
+              <span style="font-size:0.85rem">Enabled</span>
+            </label>
+          </div>
+          <div>
+            <label class="muted" for="poMpName">Account name</label>
+            <input id="poMpName" placeholder="Garden Tanzania Ltd" />
+          </div>
+          <div>
+            <label class="muted" for="poMpType">Account type</label>
+            <select id="poMpType">
+              <option value="till">Till (Lipa na M-Pesa)</option>
+              <option value="paybill">PayBill</option>
+              <option value="phone">Phone (MSISDN)</option>
+            </select>
+          </div>
+          <div>
+            <label class="muted" for="poMpNumber">Till / PayBill / phone</label>
+            <input id="poMpNumber" placeholder="e.g. 174379 or 2557…" inputmode="numeric" />
+          </div>
+          <div>
+            <label class="muted" for="poMpRef">PayBill account ref (optional)</label>
+            <input id="poMpRef" placeholder="Store / account #" />
+          </div>
+          <div style="grid-column: 1 / -1">
+            <label class="muted" for="poMpNotes">Notes (optional)</label>
+            <input id="poMpNotes" placeholder="e.g. Business float for vendor & driver settlements" />
+          </div>
+          <div>
+            <button type="button" class="primary small" id="btnPayoutMpesaSave">Save M-Pesa payout account</button>
+          </div>
+        </div>
       </div>
-      <div id="prList" style="margin-top: 12px"></div>
+
+      <h3 style="font-size: 0.95rem">End-of-day payouts</h3>
+      <p class="muted">
+        Vendors and drivers automatically request their <strong>exact net amount for the day</strong>
+        (after platform fee). Paid from the M-Pesa payout account above.
+      </p>
+      <div class="grid" style="margin-bottom:10px; align-items:end">
+        <div>
+          <label class="muted" for="eodDay">Day (UTC)</label>
+          <input id="eodDay" type="date" />
+        </div>
+        <button type="button" class="primary small" id="btnEodGenerate">Generate / refresh end-of-day</button>
+      </div>
+
+      <h4 style="font-size: 0.88rem; margin: 0.75rem 0 0.4rem">Vendors — day’s sales</h4>
+      <div id="eodSummary" class="grid" style="margin-bottom:10px"></div>
+      <div id="eodList"></div>
+
+      <h4 style="font-size: 0.88rem; margin: 1.25rem 0 0.4rem">Drivers — day’s driving</h4>
+      <div id="eodDrvSummary" class="grid" style="margin-bottom:10px"></div>
+      <div id="eodDrvList"></div>
 
       <h3 style="font-size: 0.95rem; margin-top: 18px">Commission override (category)</h3>
       <div class="grid">
@@ -411,6 +674,73 @@
         <input id="dpAmt" type="number" placeholder="amount" />
         <input id="dpDest" placeholder="destination" />
         <button type="button" class="primary small" id="btnDP">Driver payout</button>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-mpesa">
+      <header class="mpesa-head">
+        <div class="mpesa-head__brand">
+          <div class="mpesa-head__logo" aria-hidden="true">M-PESA</div>
+          <div>
+            <h2>M-Pesa payments</h2>
+            <p>Configure Safaricom Lipa na M-Pesa for customer checkout via STK Push.</p>
+          </div>
+        </div>
+        <div class="mpesa-badges" id="mpesaBadges" aria-live="polite"></div>
+      </header>
+
+      <div class="mpesa-layout">
+        <div class="mpesa-card">
+          <h3 class="mpesa-card__title">Checkout settings</h3>
+          <div class="mpesa-fields">
+            <div class="mpesa-toggle-row">
+              <div>
+                <strong>Accept M-Pesa at checkout</strong>
+                <span>Show “Pay with M-Pesa” on the shop page</span>
+              </div>
+              <label class="mpesa-switch" aria-label="Accept M-Pesa payments">
+                <input type="checkbox" id="mpEnabled" />
+                <span class="mpesa-switch__track"></span>
+              </label>
+            </div>
+
+            <div class="mpesa-field">
+              <label for="mpEnv">Operating mode</label>
+              <select id="mpEnv">
+                <option value="sandbox">Sandbox — test with simulated STK Push</option>
+                <option value="production">Live — real payments via Daraja API</option>
+              </select>
+            </div>
+
+            <div class="mpesa-field">
+              <label for="mpShortCode">Business short code</label>
+              <input id="mpShortCode" placeholder="e.g. 174379" inputmode="numeric" autocomplete="off" />
+            </div>
+
+            <div class="mpesa-live-panel" id="mpLiveFields" hidden>
+              <h3 class="mpesa-card__title" style="margin-top:0">Daraja API credentials</h3>
+              <div class="mpesa-fields">
+                <div class="mpesa-field">
+                  <label for="mpConsumerKey">Consumer key</label>
+                  <input id="mpConsumerKey" placeholder="From developer.safaricom.co.ke" autocomplete="off" />
+                </div>
+                <div class="mpesa-field">
+                  <label for="mpConsumerSecret">Consumer secret</label>
+                  <input id="mpConsumerSecret" type="password" placeholder="Leave blank to keep saved value" autocomplete="new-password" />
+                </div>
+                <div class="mpesa-field">
+                  <label for="mpPasskey">Online passkey</label>
+                  <input id="mpPasskey" type="password" placeholder="Leave blank to keep saved value" autocomplete="new-password" />
+                </div>
+              </div>
+              <div class="mpesa-creds-status" id="mpCredStatus"></div>
+            </div>
+          </div>
+
+          <div class="mpesa-actions">
+            <button type="button" class="primary" id="btnMpesaSave">Save settings</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -456,10 +786,85 @@
       function tab(name) {
         document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
         document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + name));
+        if (name === "mpesa") loadMpesaSettings();
+        if (name === "finance") {
+          loadFinance();
+          loadEndOfDay({ generate: true });
+        }
       }
       document.getElementById("tabs").addEventListener("click", (e) => {
         const b = e.target.closest("button[data-tab]");
         if (b) tab(b.dataset.tab);
+      });
+
+      function syncMpesaLiveFields() {
+        const live = $("mpEnv").value === "production";
+        $("mpLiveFields").hidden = !live;
+      }
+
+      function renderMpesaBadges(s) {
+        const on = s.checkout_available;
+        const live = s.live_mode;
+        $("mpesaBadges").innerHTML = `
+          <span class="mpesa-badge mpesa-badge--${on ? "on" : "off"}">
+            <span class="mpesa-badge__dot" aria-hidden="true"></span>
+            ${on ? "Checkout active" : "Checkout off"}
+          </span>
+          <span class="mpesa-badge mpesa-badge--${live ? "live" : "sandbox"}">
+            ${live ? "Live" : "Sandbox"}
+          </span>`;
+      }
+
+      function renderMpesaCredStatus(s) {
+        const pills = [
+          ["Consumer key", Boolean(s.consumer_key_preview)],
+          ["Consumer secret", s.consumer_secret_configured],
+          ["Passkey", s.passkey_configured],
+        ];
+        $("mpCredStatus").innerHTML = pills
+          .map(
+            ([label, ok]) =>
+              `<span class="mpesa-cred-pill${ok ? " ok" : ""}">${ok ? "✓" : "○"} ${TZShop.esc(label)}</span>`
+          )
+          .join("");
+      }
+
+      async function loadMpesaSettings() {
+        const r = await api("/api/admin/settings/mpesa");
+        const j = await r.json();
+        if (!r.ok) return window.TZShop.showToast(j.error || "Could not load M-Pesa settings", "err");
+        const s = j.settings;
+        $("mpEnabled").checked = Boolean(s.enabled);
+        $("mpEnv").value = s.environment || "sandbox";
+        $("mpShortCode").value = s.short_code || "";
+        $("mpConsumerKey").value = "";
+        $("mpConsumerKey").placeholder = s.consumer_key_preview || "From developer.safaricom.co.ke";
+        $("mpConsumerSecret").value = "";
+        $("mpPasskey").value = "";
+        syncMpesaLiveFields();
+        renderMpesaBadges(s);
+        renderMpesaCredStatus(s);
+      }
+
+      $("mpEnv").addEventListener("change", syncMpesaLiveFields);
+
+      $("btnMpesaSave").addEventListener("click", async () => {
+        const body = {
+          enabled: $("mpEnabled").checked,
+          environment: $("mpEnv").value,
+          short_code: $("mpShortCode").value.trim(),
+        };
+        const key = $("mpConsumerKey").value.trim();
+        const secret = $("mpConsumerSecret").value.trim();
+        const passkey = $("mpPasskey").value.trim();
+        if (key) body.consumer_key = key;
+        if (secret) body.consumer_secret = secret;
+        if (passkey) body.passkey = passkey;
+        const r = await api("/api/admin/settings/mpesa", { method: "PATCH", body: JSON.stringify(body) });
+        const j = await r.json();
+        if (!r.ok) return window.TZShop.showToast(j.error || "Save failed", "err");
+        window.TZShop.showToast(j.settings?.validation?.ok ? "M-Pesa settings saved" : "Saved — complete live credentials to go production", j.settings?.validation?.ok ? "ok" : "info");
+        await loadMpesaSettings();
       });
 
       async function loadOverview() {
@@ -493,13 +898,13 @@
         layerDrivers.clearLayers();
         layerPins.clearLayers();
         for (const d of j.drivers || []) {
-          const col = d.status === "online" ? "#38bdf8" : d.status === "delivering" ? "#fbbf24" : "#64748b";
+          const col = d.status === "online" ? "#14b8a6" : d.status === "delivering" ? "#fbbf24" : "#64748b";
           L.circleMarker([d.lat, d.lng], { radius: 8, color: col, fillColor: col, fillOpacity: 0.9 })
             .bindPopup(`${d.name} (${d.status})`)
             .addTo(layerDrivers);
         }
         for (const p of j.pins || []) {
-          const col = p.kind === "pickup" ? "#22c55e" : "#fb923c";
+          const col = p.kind === "pickup" ? "#14b8a6" : "#fb923c";
           L.circleMarker([p.lat, p.lng], { radius: 6, color: col, fillColor: col, fillOpacity: 0.85 })
             .bindPopup(`${p.kind} ${p.order_id}`)
             .addTo(layerPins);
@@ -595,8 +1000,15 @@
           <td>${d.name}</td>
           <td>${d.admin_ui_status}</td>
           <td>${d.rating_avg}</td>
-          <td>${d.vehicle_type}</td>
+          <td>${d.vehicle_type}${d.vehicle_make || d.vehicle_model ? `<br/><span class="muted">${[d.vehicle_make, d.vehicle_model, d.vehicle_year].filter((x) => x != null && x !== "").join(" ")}</span>` : ""}${d.vehicle_plate ? `<br/><span class="muted">${d.vehicle_plate}${d.vehicle_color ? " · " + d.vehicle_color : ""}</span>` : ""}</td>
           <td>
+            <button type="button" class="small" data-editveh="${d.id}"
+              data-type="${d.vehicle_type || ""}"
+              data-make="${d.vehicle_make || ""}"
+              data-model="${d.vehicle_model || ""}"
+              data-year="${d.vehicle_year ?? ""}"
+              data-plate="${d.vehicle_plate || ""}"
+              data-color="${d.vehicle_color || ""}">Edit vehicle</button>
             <button type="button" class="small" data-susp="${d.id}" data-on="${d.suspended ? "1" : "0"}">${d.suspended ? "Unsuspend" : "Suspend"}</button>
             <button type="button" class="small" data-flag="${d.id}">Flag review</button>
             <button type="button" class="small" data-hist="${d.id}">History</button>
@@ -604,6 +1016,36 @@
         </tr>`
           )
           .join("");
+        document.querySelectorAll("[data-editveh]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            const type = prompt("Vehicle type (Boda Boda, Motorbike, Bicycle, Bajaji, Car, Van):", b.dataset.type || "Motorbike");
+            if (type == null) return;
+            const make = prompt("Make (e.g. Bajaj, Toyota):", b.dataset.make || "");
+            if (make == null) return;
+            const model = prompt("Model (e.g. Boxer, Hilux):", b.dataset.model || "");
+            if (model == null) return;
+            const year = prompt("Year made (e.g. 2019):", b.dataset.year || "");
+            if (year == null) return;
+            const plate = prompt("Plate number:", b.dataset.plate || "");
+            if (plate == null) return;
+            const color = prompt("Vehicle colour (optional):", b.dataset.color || "");
+            if (color == null) return;
+            const r = await api(`/api/drivers/${b.dataset.editveh}/vehicle`, {
+              method: "PATCH",
+              body: JSON.stringify({
+                vehicle_type: type.trim(),
+                vehicle_make: make.trim(),
+                vehicle_model: model.trim(),
+                vehicle_year: Number(year),
+                vehicle_plate: plate.trim(),
+                vehicle_color: color.trim(),
+              }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) return alert(j.error || "Failed");
+            loadDrivers();
+          })
+        );
         document.querySelectorAll("[data-susp]").forEach((b) =>
           b.addEventListener("click", async () => {
             const susp = b.dataset.on === "1" ? false : true;
@@ -662,19 +1104,57 @@
         );
       }
 
+      function formatAppDate(isoStr) {
+        if (!isoStr) return "—";
+        try {
+          return new Date(isoStr).toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } catch (_) {
+          return String(isoStr);
+        }
+      }
+
+      let appFilter = "pending";
+
+      function setAppFilter(next) {
+        appFilter = next === "rejected" ? "rejected" : "pending";
+        $("appFilterPending").classList.toggle("primary", appFilter === "pending");
+        $("appFilterRejected").classList.toggle("primary", appFilter === "rejected");
+        $("appFilterHint").textContent =
+          appFilter === "pending"
+            ? "Showing applications waiting for your review. Rejected applicants are hidden from this queue."
+            : "Rejected applications only. Remove clears them from the admin panel (applicants can still re-apply).";
+        loadApps();
+        loadDriverApps();
+      }
+
       async function loadDriverApps() {
-        const j = await (await api("/api/admin/driver-applications")).json();
-        $("drvAppList").innerHTML = (j.applications || [])
+        const j = await (await api(`/api/admin/driver-applications?status=${appFilter}`)).json();
+        const rows = j.applications || [];
+        if (!rows.length) {
+          $("drvAppList").innerHTML = `<p class="muted">${
+            appFilter === "pending" ? "No pending driver applications." : "No rejected driver applications."
+          }</p>`;
+          return;
+        }
+        $("drvAppList").innerHTML = rows
           .map(
             (a) => `<div style="border-bottom:1px solid #1d4d45;padding:8px 0">
-          <strong>${TZShop.esc(a.full_name)}</strong> · ${TZShop.esc(a.vehicle_type)} · ${TZShop.esc(a.vehicle_plate)} · ${a.status}<br />
+          <strong>${TZShop.esc(a.full_name)}</strong> · ${TZShop.esc(a.vehicle_type)} · ${TZShop.esc([a.vehicle_make, a.vehicle_model, a.vehicle_year].filter((x) => x != null && x !== "").join(" "))} · ${TZShop.esc(a.vehicle_plate)} · ${a.status}<br />
           <span class="muted">Licence ${TZShop.esc(a.license_number)} · expires ${TZShop.esc(a.license_expiry)} · ${TZShop.esc(a.phone)}</span><br />
+          <span class="muted">Applied ${TZShop.esc(formatAppDate(a.created_at))}${a.reviewed_at ? ` · Reviewed ${TZShop.esc(formatAppDate(a.reviewed_at))}` : ""}</span><br />
           ${
             a.status === "pending"
               ? `<button type="button" class="small" data-dok="${a.id}">Approve</button>
              <button type="button" class="small" data-dno="${a.id}">Reject</button>`
-              : a.rejection_reason
-                ? `<span class="muted">${TZShop.esc(a.rejection_reason)}</span>`
+              : a.status === "rejected"
+                ? `${a.rejection_reason ? `<span class="muted">${TZShop.esc(a.rejection_reason)}</span><br />` : ""}
+             <button type="button" class="small" data-drm="${a.id}">Remove</button>`
                 : ""
           }
         </div>`
@@ -698,20 +1178,44 @@
             loadDriverApps();
           })
         );
+        document.querySelectorAll("[data-drm]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            if (!confirm("Remove this rejected driver application from the admin panel?")) return;
+            const r = await api(`/api/admin/driver-applications/${b.dataset.drm}`, { method: "DELETE" });
+            const j2 = await r.json().catch(() => ({}));
+            if (!r.ok) return window.TZShop.showToast(j2.error || "Could not remove", "err");
+            window.TZShop.showToast("Removed from admin panel", "ok");
+            loadDriverApps();
+          })
+        );
       }
 
       async function loadApps() {
-        const j = await (await api("/api/admin/applications")).json();
-        $("appList").innerHTML = (j.applications || [])
+        const j = await (await api(`/api/admin/applications?status=${appFilter}`)).json();
+        const rows = j.applications || [];
+        if (!rows.length) {
+          $("appList").innerHTML = `<p class="muted">${
+            appFilter === "pending" ? "No pending vendor applications." : "No rejected vendor applications."
+          }</p>`;
+          return;
+        }
+        $("appList").innerHTML = rows
           .map(
             (a) => `<div style="border-bottom:1px solid #1d4d45;padding:8px 0">
-          <strong>${a.business_name}</strong> · ${a.zone} · ${a.status}<br />
-          <span class="muted">${a.contact_phone}</span><br />
+          <strong>${TZShop.esc(a.business_name)}</strong> · ${TZShop.esc(a.zone)} · ${TZShop.esc(a.status)}<br />
+          <span class="muted">${TZShop.esc(a.contact_phone || "")}</span><br />
+          <span class="muted">Applied ${TZShop.esc(formatAppDate(a.created_at))}${
+            a.processed_at || a.reviewed_at
+              ? ` · Reviewed ${TZShop.esc(formatAppDate(a.processed_at || a.reviewed_at))}`
+              : ""
+          }</span><br />
           ${
             a.status === "pending"
               ? `<button type="button" class="small" data-ok="${a.id}">Approve</button>
              <button type="button" class="small" data-no="${a.id}">Reject</button>`
-              : ""
+              : a.status === "rejected"
+                ? `<button type="button" class="small" data-arm="${a.id}">Remove</button>`
+                : ""
           }
         </div>`
           )
@@ -730,7 +1234,20 @@
             loadApps();
           })
         );
+        document.querySelectorAll("[data-arm]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            if (!confirm("Remove this rejected vendor application from the admin panel?")) return;
+            const r = await api(`/api/admin/applications/${b.dataset.arm}`, { method: "DELETE" });
+            const j2 = await r.json().catch(() => ({}));
+            if (!r.ok) return window.TZShop.showToast(j2.error || "Could not remove", "err");
+            window.TZShop.showToast("Removed from admin panel", "ok");
+            loadApps();
+          })
+        );
       }
+
+      $("appFilterPending").addEventListener("click", () => setAppFilter("pending"));
+      $("appFilterRejected").addEventListener("click", () => setAppFilter("rejected"));
 
       async function loadFinance() {
         const j = await (await api("/api/admin/finance/summary")).json();
@@ -755,7 +1272,58 @@
           <details class="ts-details"><summary>Full finance JSON</summary><pre style="max-height:160px;overflow:auto;margin:0.4rem 0 0;font-size:0.7rem;">${TZShop.prettyJson(
             j
           )}</pre></details>`;
+        loadPayoutMpesaSettings();
       }
+
+      async function loadPayoutMpesaSettings() {
+        const status = $("payoutMpesaStatus");
+        if (!$("poMpEnabled")) return;
+        try {
+          const r = await api("/api/admin/settings/payout-mpesa");
+          const j = await r.json();
+          if (!r.ok) {
+            if (status) status.textContent = j.error || "Could not load payout account";
+            return;
+          }
+          const s = j.settings || {};
+          $("poMpEnabled").checked = Boolean(s.enabled);
+          $("poMpName").value = s.account_name || "";
+          $("poMpType").value = s.account_type || "till";
+          $("poMpNumber").value = s.account_number || "";
+          $("poMpRef").value = s.account_ref || "";
+          $("poMpNotes").value = s.notes || "";
+          const sum = j.summary || {};
+          if (status) {
+            status.innerHTML = sum.configured
+              ? `<span style="color:#4ade80">● Paying from:</span> <strong>${TZShop.esc(sum.label)}</strong>`
+              : `<span style="color:#fbbf24">● ${TZShop.esc(sum.label || "Not configured")}</span> — ${TZShop.esc(sum.hint || "")}`;
+          }
+        } catch (e) {
+          if (status) status.textContent = e.message || "Failed to load";
+        }
+      }
+
+      $("btnPayoutMpesaSave")?.addEventListener("click", async () => {
+        const body = {
+          enabled: $("poMpEnabled").checked,
+          account_name: $("poMpName").value,
+          account_type: $("poMpType").value,
+          account_number: $("poMpNumber").value,
+          account_ref: $("poMpRef").value,
+          notes: $("poMpNotes").value,
+        };
+        const r = await api("/api/admin/settings/payout-mpesa", {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          window.TZShop.showToast(j.error || "Save failed", "err");
+          return;
+        }
+        window.TZShop.showToast("M-Pesa payout account saved", "ok");
+        await loadPayoutMpesaSettings();
+      });
 
       async function loadRefunds() {
         const j = await (await api("/api/admin/refunds")).json();
@@ -789,57 +1357,176 @@
       }
 
       async function populatePRVendors() {
-        const list = acVendors.length ? acVendors : ((await (await api("/api/admin/vendors")).json()).vendors || []);
-        $("prVendor").innerHTML = list.map((v) => `<option value="${v.id}">${TZShop.esc(v.name)} (${v.id})</option>`).join("");
+        /* end-of-day flow no longer needs a vendor picker */
       }
 
-      async function loadPaymentRequests() {
-        const j = await (await api("/api/admin/payment-requests")).json();
-        const reqs = j.requests || [];
-        if (!reqs.length) {
-          $("prList").innerHTML = '<p class="muted">No settlement requests yet.</p>';
+      function eodDayValue() {
+        const el = $("eodDay");
+        if (el?.value) return el.value;
+        return new Date().toISOString().slice(0, 10);
+      }
+
+      async function loadEndOfDay({ generate = true } = {}) {
+        const day = eodDayValue();
+        if ($("eodDay") && !$("eodDay").value) $("eodDay").value = day;
+        if (generate) {
+          const gen = await api("/api/admin/finance/end-of-day/generate", {
+            method: "POST",
+            body: JSON.stringify({ day }),
+          });
+          const gj = await gen.json().catch(() => ({}));
+          if (!gen.ok) {
+            window.TZShop.showToast(gj.error || "Could not generate end-of-day requests", "err");
+          } else {
+            const vc = (gj.vendor_created || []).length;
+            const dc = (gj.driver_created || []).length;
+            if (vc || dc) {
+              const parts = [];
+              if (vc) parts.push(`${vc} vendor`);
+              if (dc) parts.push(`${dc} driver`);
+              window.TZShop.showToast(`Created ${parts.join(" + ")} end-of-day payout request(s)`, "ok");
+            }
+          }
+        }
+        const r = await api(`/api/admin/finance/end-of-day?day=${encodeURIComponent(day)}`);
+        const j = await r.json();
+        if (!r.ok) {
+          $("eodList").innerHTML = `<p class="red">${TZShop.esc(j.error || "Failed to load")}</p>`;
+          if ($("eodDrvList")) $("eodDrvList").innerHTML = "";
           return;
         }
-        $("prList").innerHTML = `<table>
-          <thead><tr><th>Vendor</th><th>Amount</th><th>Reason</th><th>Due</th><th>Status</th><th>Ref</th><th></th></tr></thead>
-          <tbody>${reqs
-            .map(
-              (r) => `<tr>
-                <td>${TZShop.esc(r.vendor_name)}</td>
-                <td>${Number(r.amount_tzs).toLocaleString()} TZS</td>
-                <td>${TZShop.esc(r.reason)}</td>
-                <td>${TZShop.esc(r.due_label)}</td>
-                <td>${TZShop.esc(r.status)}</td>
-                <td>${TZShop.esc(r.reference || "—")}</td>
-                <td>${r.status === "pending" ? `<button type="button" class="small" data-prcancel="${r.id}">Cancel</button>` : ""}</td>
-              </tr>`
-            )
+
+        const payFrom = j.payout_mpesa || {};
+        if ($("payoutMpesaStatus") && payFrom.label) {
+          $("payoutMpesaStatus").innerHTML = payFrom.configured
+            ? `<span style="color:#4ade80">● Paying from:</span> <strong>${TZShop.esc(payFrom.label)}</strong>`
+            : `<span style="color:#fbbf24">● ${TZShop.esc(payFrom.label || "Not configured")}</span> — ${TZShop.esc(payFrom.hint || "")}`;
+        }
+
+        const tot = j.totals || {};
+        $("eodSummary").innerHTML = `
+          <div class="card"><span class="muted">Vendors with sales</span><br /><b>${tot.vendors_with_sales || 0}</b></div>
+          <div class="card"><span class="muted">Day gross sales</span><br /><b>${Number(tot.gross_sales_tzs || 0).toLocaleString()} TZS</b></div>
+          <div class="card"><span class="muted">Net to pay vendors</span><br /><b>${Number(tot.net_payouts_tzs || 0).toLocaleString()} TZS</b></div>
+          <div class="card"><span class="muted">Pending requests</span><br /><b>${tot.pending_requests || 0}</b></div>`;
+
+        const vendors = j.vendors || [];
+        const reqByVendor = Object.fromEntries((j.requests || []).map((x) => [x.vendor_id, x]));
+        if (!vendors.length) {
+          $("eodList").innerHTML = `<p class="muted">No vendor sales on ${TZShop.esc(day)} yet. When orders complete, end-of-day amounts appear here automatically.</p>`;
+        } else {
+          $("eodList").innerHTML = `<table>
+          <thead><tr><th>Vendor</th><th>Gross sales</th><th>Platform fee</th><th>Net (payout)</th><th>Sales</th><th>Request</th><th></th></tr></thead>
+          <tbody>${vendors
+            .map((v) => {
+              const req = reqByVendor[v.vendor_id];
+              const status = req
+                ? `<span class="muted">${TZShop.esc(req.status)}</span>`
+                : `<span class="muted">—</span>`;
+              const payBtn =
+                req && req.status === "pending"
+                  ? `<button type="button" class="primary small" data-eodpay="${req.id}">Pay vendor</button>
+                     <button type="button" class="small" data-eodcancel="${req.id}">Cancel</button>`
+                  : req?.status === "paid"
+                    ? `<span class="muted">Paid${req.reference ? " · " + TZShop.esc(req.reference) : ""}</span>`
+                    : "";
+              return `<tr>
+                <td>${TZShop.esc(v.vendor_name)}<br/><span class="muted" style="font-size:0.75rem">${TZShop.esc(v.vendor_id)}</span></td>
+                <td>${Number(v.gross_tzs).toLocaleString()} TZS</td>
+                <td>${Number(v.fee_tzs).toLocaleString()} TZS</td>
+                <td><strong>${Number(v.net_tzs).toLocaleString()} TZS</strong></td>
+                <td>${v.sales_count}</td>
+                <td>${status}</td>
+                <td style="white-space:nowrap">${payBtn}</td>
+              </tr>`;
+            })
             .join("")}</tbody>
         </table>`;
-        document.querySelectorAll("[data-prcancel]").forEach((b) =>
+        }
+
+        const dtot = j.driver_totals || {};
+        if ($("eodDrvSummary")) {
+          $("eodDrvSummary").innerHTML = `
+            <div class="card"><span class="muted">Drivers with trips</span><br /><b>${dtot.drivers_with_trips || 0}</b></div>
+            <div class="card"><span class="muted">Day gross fares</span><br /><b>${Number(dtot.gross_fares_tzs || 0).toLocaleString()} TZS</b></div>
+            <div class="card"><span class="muted">Net to pay drivers</span><br /><b>${Number(dtot.net_payouts_tzs || 0).toLocaleString()} TZS</b></div>
+            <div class="card"><span class="muted">Pending requests</span><br /><b>${dtot.pending_requests || 0}</b></div>`;
+        }
+
+        const drivers = j.drivers || [];
+        const reqByDriver = Object.fromEntries((j.driver_requests || []).map((x) => [x.driver_id, x]));
+        if ($("eodDrvList")) {
+          if (!drivers.length) {
+            $("eodDrvList").innerHTML = `<p class="muted">No completed deliveries on ${TZShop.esc(day)} yet. When drivers finish trips, end-of-day amounts appear here automatically.</p>`;
+          } else {
+            $("eodDrvList").innerHTML = `<table>
+              <thead><tr><th>Driver</th><th>Gross fare</th><th>Platform fee</th><th>Net (payout)</th><th>Trips</th><th>Request</th><th></th></tr></thead>
+              <tbody>${drivers
+                .map((d) => {
+                  const req = reqByDriver[d.driver_id];
+                  const status = req
+                    ? `<span class="muted">${TZShop.esc(req.status)}</span>`
+                    : `<span class="muted">—</span>`;
+                  const payBtn =
+                    req && req.status === "pending"
+                      ? `<button type="button" class="primary small" data-eodpay="${req.id}">Pay driver</button>
+                         <button type="button" class="small" data-eodcancel="${req.id}">Cancel</button>`
+                      : req?.status === "paid"
+                        ? `<span class="muted">Paid${req.reference ? " · " + TZShop.esc(req.reference) : ""}</span>`
+                        : "";
+                  return `<tr>
+                    <td>${TZShop.esc(d.driver_name)}<br/><span class="muted" style="font-size:0.75rem">${TZShop.esc(d.driver_id)}</span></td>
+                    <td>${Number(d.gross_tzs).toLocaleString()} TZS</td>
+                    <td>${Number(d.fee_tzs).toLocaleString()} TZS</td>
+                    <td><strong>${Number(d.net_tzs).toLocaleString()} TZS</strong></td>
+                    <td>${d.deliveries}</td>
+                    <td>${status}</td>
+                    <td style="white-space:nowrap">${payBtn}</td>
+                  </tr>`;
+                })
+                .join("")}</tbody>
+            </table>`;
+          }
+        }
+
+        document.querySelectorAll("[data-eodpay]").forEach((b) =>
           b.addEventListener("click", async () => {
-            await api(`/api/admin/payment-requests/${b.dataset.prcancel}/cancel`, { method: "POST", body: "{}" });
-            loadPaymentRequests();
+            const fromHint =
+              (j.payout_mpesa && j.payout_mpesa.configured && j.payout_mpesa.label) ||
+              "your M-Pesa payout account";
+            const dest =
+              prompt(
+                `Paying from ${fromHint}.\nEnter recipient M-Pesa / bank destination (optional):`
+              ) || "";
+            const rr = await api(`/api/admin/payment-requests/${b.dataset.eodpay}/pay-out`, {
+              method: "POST",
+              body: JSON.stringify({
+                destination: dest,
+                source_account: j.payout_mpesa?.account_number || null,
+                method: "mpesa",
+              }),
+            });
+            const jj = await rr.json().catch(() => ({}));
+            if (!rr.ok) return window.TZShop.showToast(jj.error || "Pay-out failed", "err");
+            window.TZShop.showToast("Payout recorded from M-Pesa account", "ok");
+            loadEndOfDay({ generate: false });
+            loadFinance();
+          })
+        );
+        document.querySelectorAll("[data-eodcancel]").forEach((b) =>
+          b.addEventListener("click", async () => {
+            await api(`/api/admin/payment-requests/${b.dataset.eodcancel}/cancel`, { method: "POST", body: "{}" });
+            loadEndOfDay({ generate: false });
           })
         );
       }
 
-      $("btnPR").addEventListener("click", async () => {
-        const vid = $("prVendor").value;
-        if (!vid) return window.TZShop.showToast("Pick a vendor", "err");
-        const body = {
-          amount_tzs: Number($("prAmt").value),
-          reason: $("prReason").value.trim() || "Shift settlement",
-          due_label: $("prDue").value,
-        };
-        const r = await api(`/api/admin/vendors/${vid}/payment-requests`, { method: "POST", body: JSON.stringify(body) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) return window.TZShop.showToast(j.error || "Failed", "err");
-        window.TZShop.showToast("Payment requested from vendor", "ok");
-        $("prAmt").value = "";
-        $("prReason").value = "";
-        loadPaymentRequests();
-      });
+      async function loadPaymentRequests() {
+        return loadEndOfDay({ generate: true });
+      }
+
+      $("btnEodGenerate")?.addEventListener("click", () => loadEndOfDay({ generate: true }));
+      $("eodDay")?.addEventListener("change", () => loadEndOfDay({ generate: true }));
 
       $("btnFOrd").addEventListener("click", loadOrders);
       $("btnCom").addEventListener("click", async () => {

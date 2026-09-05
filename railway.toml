@@ -1,0 +1,8 @@
+﻿[build]
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run migrate:commerce"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"

@@ -143,7 +143,7 @@ function securityHeaders(extra = {}) {
     "Cross-Origin-Resource-Policy": "same-origin",
     "Permissions-Policy": "geolocation=(self), microphone=()",
     "Content-Security-Policy":
-      "default-src 'self'; connect-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.openstreetmap.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; script-src 'self' 'unsafe-inline' https://unpkg.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "default-src 'self'; connect-src 'self' https://router.project-osrm.org; img-src 'self' data: https://*.tile.openstreetmap.org https://*.openstreetmap.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; script-src 'self' 'unsafe-inline' https://unpkg.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     ...extra,
   };
 }
@@ -547,6 +547,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && (url.pathname === "/account" || url.pathname === "/account/")) {
       return sendFile(res, path.join(publicDir, "account.html"), "text/html; charset=utf-8");
     }
+    if (req.method === "GET" && (url.pathname === "/privacy" || url.pathname === "/privacy/")) {
+      return sendFile(res, path.join(publicDir, "privacy.html"), "text/html; charset=utf-8");
+    }
+    if (req.method === "GET" && (url.pathname === "/terms" || url.pathname === "/terms/")) {
+      return sendFile(res, path.join(publicDir, "terms.html"), "text/html; charset=utf-8");
+    }
     if (req.method === "GET" && url.pathname === "/manifest.webmanifest") {
       return sendFile(res, path.join(publicDir, "manifest.webmanifest"), "application/manifest+json; charset=utf-8");
     }
@@ -792,25 +798,25 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/support/thread") {
       requireAuth(actor);
-      const thread = support.getUserThread(actor);
+      const thread = await support.getUserThread(actor);
       return json(res, 200, thread);
     }
     if (req.method === "POST" && url.pathname === "/api/support/messages") {
       requireAuth(actor);
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["body"]));
-      const message = support.postUserMessage(actor, body.body);
+      const message = await support.postUserMessage(actor, body.body);
       return json(res, 201, { message });
     }
     const supDel = req.method === "DELETE" && url.pathname.match(/^\/api\/support\/messages\/([^/]+)$/);
     if (supDel) {
       requireAuth(actor);
-      const out = support.deleteUserMessage(actor, supDel[1]);
+      const out = await support.deleteUserMessage(actor, supDel[1]);
       return json(res, 200, out);
     }
     if (req.method === "POST" && url.pathname === "/api/support/read") {
       requireAuth(actor);
-      support.markReadForUser(actor);
+      await support.markReadForUser(actor);
       return json(res, 200, { ok: true });
     }
 
@@ -1618,7 +1624,7 @@ const server = http.createServer(async (req, res) => {
       requireRole(actor, ["admin"]);
       const thread = support.getConversationForAdmin(adSupGet[1]);
       if (!thread) return json(res, 404, { error: "Conversation not found" });
-      support.markReadForAdmin(adSupGet[1]);
+      await support.markReadForAdmin(adSupGet[1]);
       return json(res, 200, thread);
     }
     const adSupMsg = req.method === "POST" && url.pathname.match(/^\/api\/admin\/support\/conversations\/([^/]+)\/messages$/);
@@ -1626,7 +1632,7 @@ const server = http.createServer(async (req, res) => {
       requireRole(actor, ["admin"]);
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["body"]));
-      const message = support.postAdminMessage(adSupMsg[1], actor, body.body);
+      const message = await support.postAdminMessage(adSupMsg[1], actor, body.body);
       return json(res, 201, { message });
     }
     const adSupStatus = req.method === "POST" && url.pathname.match(/^\/api\/admin\/support\/conversations\/([^/]+)\/status$/);
@@ -1634,7 +1640,7 @@ const server = http.createServer(async (req, res) => {
       requireRole(actor, ["admin"]);
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["status"]));
-      const conversation = support.setConversationStatus(adSupStatus[1], String(body.status));
+      const conversation = await support.setConversationStatus(adSupStatus[1], String(body.status));
       return json(res, 200, { conversation });
     }
 
@@ -1862,6 +1868,11 @@ const server = http.createServer(async (req, res) => {
     }
     return json(res, 400, { error: msg });
   }
+});
+
+process.on("unhandledRejection", (err) => {
+  // eslint-disable-next-line no-console
+  console.warn("[garden] Unhandled promise rejection:", err?.message || err);
 });
 
 authReady

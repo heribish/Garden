@@ -30,6 +30,7 @@
           <option value="sw">Kiswahili</option>
           <option value="en">English</option>
         </select>
+        <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
         <button type="button" class="btn btn--secondary btn--sm" id="btnSignOut" data-i18n="auth.signOut">Sign out</button>
       </nav>
     </header>
@@ -562,6 +563,7 @@
         async function init() {
           TZShop.initLang();
           TZShop.applyDataI18n();
+          TZShop.initInstallPrompt();
           $("langSelect").value = TZShop.getLang();
           $("langSelect").addEventListener("change", () => {
             TZShop.setLang($("langSelect").value);

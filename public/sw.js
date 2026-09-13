@@ -1,13 +1,18 @@
 /* garden PWA shell — network-first for pages, cache static assets for offline open */
-const CACHE = "garden-v1";
+const CACHE = "garden-v3";
 const PRECACHE = [
   "/",
   "/shop",
   "/account",
+  "/vendor",
+  "/driver",
+  "/admin",
   "/manifest.webmanifest",
   "/assets/tzshop.css",
   "/assets/tzshop.js",
   "/assets/i18n.js",
+  "/assets/location.js",
+  "/assets/support-widget.js",
   "/assets/favicon.svg",
   "/assets/icon-192.png",
   "/assets/icon-512.png",

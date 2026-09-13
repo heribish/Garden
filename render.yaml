@@ -26,6 +26,11 @@ services:
       # after replacing the mock adapter with a contracted payment provider.
       - key: WALLET_PAYMENTS_ENABLED
         value: "0"
+      # Set after first deploy to your real host, e.g. https://garden-xxxx.onrender.com
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: GARDEN_APP_URL
+        sync: false
       - key: SESSION_TTL_MS
         value: "2592000000"
       - key: API_RATE_LIMIT_WINDOW_MS

@@ -407,6 +407,7 @@
           <option value="sw">Kiswahili</option>
           <option value="en">English</option>
         </select>
+        <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
         <span class="ts-badge-live" id="liveBadge" data-i18n="vendor.live">Live</span>
       </nav>
     </header>
@@ -493,7 +494,7 @@
           <label>Payment method (for settlements)</label>
           <select id="vpSettleMethod">
             <option value="mpesa">M-Pesa</option>
-            <option value="tigopesa">Tigo Pesa (Mixx)</option>
+            <option value="tigopesa">Mixx by Yas</option>
             <option value="airtel">Airtel Money</option>
             <option value="halopesa">HaloPesa</option>
             <option value="bank">Bank transfer</option>
@@ -1651,7 +1652,7 @@
           $("payReqList").innerHTML = '<p class="muted" style="font-size:0.85rem">No payment requests right now.</p>';
           return;
         }
-        const methodLabels = { mpesa: "M-Pesa", tigopesa: "Tigo Pesa", airtel: "Airtel Money", halopesa: "HaloPesa", bank: "Bank transfer" };
+        const methodLabels = { mpesa: "M-Pesa", tigopesa: "Mixx by Yas", airtel: "Airtel Money", halopesa: "HaloPesa", bank: "Bank transfer" };
         $("payReqList").innerHTML = reqs
           .map((pr) => {
             const isPayout = pr.direction === "to_vendor";
@@ -1753,6 +1754,7 @@
       }
 
       window.TZShop.initLang();
+      window.TZShop.initInstallPrompt();
       $("langSelect").value = window.TZShop.getLang();
       $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value));
       window.TZShop.onLangChange(applyVendorI18n);
@@ -1760,7 +1762,9 @@
 
       ensureAuth().then((ok) => {
         if (!ok) return;
-        init().catch((e) => alert(String(e)));
+        init().catch((e) => {
+          window.TZShop.showToast(e?.message || "Could not load the vendor dashboard.", "err");
+        });
       });
     </script>
   </body>

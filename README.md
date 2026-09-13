@@ -32,6 +32,22 @@ For local Postgres without Supabase: `docker compose up -d` then uncomment `DATA
 
 See [docs/public-launch-checklist.md](docs/public-launch-checklist.md) before inviting real users.
 
+## Mobile apps (Google Play & App Store)
+
+Native shells are set up with Capacitor.
+
+- Overview: [docs/app-stores.md](docs/app-stores.md)
+- Play upload steps: [docs/play-console-upload.md](docs/play-console-upload.md)
+
+```powershell
+# After Render is live:
+.\scripts\set-app-url.ps1 https://YOUR-APP.onrender.com
+npm run mobile:android   # Android Studio → signed .aab → Play Console
+npm run mobile:ios       # macOS + Xcode → App Store Connect
+```
+
+Play Store works from Windows (install Android Studio first). App Store builds require a Mac and an Apple Developer account.
+
 ## Tests
 
 ```bash

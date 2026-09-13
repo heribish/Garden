@@ -415,6 +415,7 @@
               <a class="btn btn--ghost btn--sm" href="/shop">Shop</a>
               <a class="btn btn--ghost btn--sm" href="/vendor">Vendor</a>
               <a class="btn btn--ghost btn--sm" href="/driver">Driver</a>
+              <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
             </div>
           </div>
           <select id="langSelect" aria-label="Language" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.12);color:#fff;font-size:0.82rem">
@@ -762,6 +763,7 @@
       const $ = (id) => document.getElementById(id);
       const t = (k, p) => window.TZShop.t(k, p);
       window.TZShop.initLang();
+      window.TZShop.initInstallPrompt();
       if ($("langSelect")) {
         $("langSelect").value = window.TZShop.getLang();
         $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value));
@@ -898,13 +900,14 @@
         layerDrivers.clearLayers();
         layerPins.clearLayers();
         for (const d of j.drivers || []) {
-          const col = d.status === "online" ? "#14b8a6" : d.status === "delivering" ? "#fbbf24" : "#64748b";
+          // Sky blue for online drivers — distinct from green pickup pins
+          const col = d.status === "online" ? "#38bdf8" : d.status === "delivering" ? "#fbbf24" : "#64748b";
           L.circleMarker([d.lat, d.lng], { radius: 8, color: col, fillColor: col, fillOpacity: 0.9 })
             .bindPopup(`${d.name} (${d.status})`)
             .addTo(layerDrivers);
         }
         for (const p of j.pins || []) {
-          const col = p.kind === "pickup" ? "#14b8a6" : "#fb923c";
+          const col = p.kind === "pickup" ? "#22c55e" : "#fb923c";
           L.circleMarker([p.lat, p.lng], { radius: 6, color: col, fillColor: col, fillOpacity: 0.85 })
             .bindPopup(`${p.kind} ${p.order_id}`)
             .addTo(layerPins);
@@ -1026,6 +1029,11 @@
             if (model == null) return;
             const year = prompt("Year made (e.g. 2019):", b.dataset.year || "");
             if (year == null) return;
+            const yearNum = Number(String(year).trim());
+            const maxYear = new Date().getFullYear() + 1;
+            if (!String(year).trim() || !Number.isInteger(yearNum) || yearNum < 1980 || yearNum > maxYear) {
+              return alert(`Enter a valid year made between 1980 and ${maxYear}.`);
+            }
             const plate = prompt("Plate number:", b.dataset.plate || "");
             if (plate == null) return;
             const color = prompt("Vehicle colour (optional):", b.dataset.color || "");
@@ -1036,7 +1044,7 @@
                 vehicle_type: type.trim(),
                 vehicle_make: make.trim(),
                 vehicle_model: model.trim(),
-                vehicle_year: Number(year),
+                vehicle_year: yearNum,
                 vehicle_plate: plate.trim(),
                 vehicle_color: color.trim(),
               }),

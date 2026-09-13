@@ -589,6 +589,7 @@
             <option value="sw">SW</option>
             <option value="en">EN</option>
           </select>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
           <label class="drv-online" id="onlineWrap" for="online">
             <input type="checkbox" id="online" />
             <span class="drv-online__dot" aria-hidden="true"></span>
@@ -815,6 +816,7 @@
       const $ = (id) => document.getElementById(id);
       const t = (k, p) => window.TZShop.t(k, p);
       window.TZShop.initLang();
+      window.TZShop.initInstallPrompt();
       $("langSelect") &&
         (($("langSelect").value = window.TZShop.getLang()),
         $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value)));

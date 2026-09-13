@@ -7,3 +7,16 @@ Thumbs.db
 
 tools/
 
+# Capacitor / native build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+android/local.properties
+android/key.properties
+ios/App/Pods/
+ios/DerivedData/
+*.keystore
+*.jks
+*.mobileprovision
+

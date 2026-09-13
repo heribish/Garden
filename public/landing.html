@@ -3,18 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" data-i18n="landing.metaDesc" content="Garden connects shoppers, local vendors, and drivers on one platform. Groceries and essentials to your door in Dar es Salaam — same day, paid your way." />
-    <meta name="theme-color" content="#0d9488" />
+    <meta
+      name="description"
+      data-i18n="landing.metaDesc"
+      content="Garden connects shoppers, local vendors, and drivers on one platform. Groceries and essentials to your door in Dar es Salaam — same day, paid your way."
+    />
+    <meta name="theme-color" content="#0f766e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="garden" />
-    <title data-i18n="landing.metaTitle">garden — Tanzania's marketplace, delivered</title>
+    <meta name="apple-mobile-web-app-title" content="Garden" />
+    <title data-i18n="landing.metaTitle">Garden — Tanzania's marketplace, delivered</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/assets/tzshop.css" />
@@ -24,10 +28,7 @@
 
     <header class="ts-lp-nav" id="lpNav">
       <div class="ts-lp-nav__inner">
-        <a class="ts-brand" href="/">
-          <span class="ts-brand-mark" aria-hidden="true">G</span>
-          <span data-i18n="nav.brand">arden</span>
-        </a>
+        <a class="ts-lp-wordmark" href="/">Garden</a>
         <nav class="ts-lp-nav__links" aria-label="Primary">
           <a href="/shop" data-i18n="landing.navShop">Shop</a>
           <a href="/account#vendor" data-i18n="landing.navSell">Sell</a>
@@ -38,7 +39,7 @@
             <option value="sw">Kiswahili</option>
             <option value="en">English</option>
           </select>
-          <a class="btn btn--ghost ts-lp-signin" href="/shop?auth=signin" data-i18n="landing.signIn">Sign in</a>
+          <a class="ts-lp-link" href="/shop?auth=signin" data-i18n="landing.signIn">Sign in</a>
           <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
           <a class="btn btn--primary" href="/shop" data-i18n="landing.heroCtaShop">Start shopping</a>
         </div>
@@ -46,169 +47,109 @@
     </header>
 
     <main id="lp-main">
-      <!-- HERO -->
-      <section class="ts-lp-hero">
-        <div class="ts-lp-hero__bg" aria-hidden="true">
-          <span class="ts-lp-orb ts-lp-orb--1"></span>
-          <span class="ts-lp-orb ts-lp-orb--2"></span>
-          <span class="ts-lp-orb ts-lp-orb--3"></span>
+      <section class="ts-lp-hero" aria-labelledby="lp-hero-brand">
+        <div class="ts-lp-hero__media" aria-hidden="true">
+          <img
+            class="ts-lp-hero__img"
+            src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2000&q=80"
+            alt=""
+            width="2000"
+            height="1333"
+            fetchpriority="high"
+          />
+          <div class="ts-lp-hero__veil"></div>
         </div>
         <div class="ts-lp-hero__inner">
-          <div class="ts-lp-hero__copy">
-            <span class="ts-lp-eyebrow">
-              <span class="ts-lp-eyebrow__dot" aria-hidden="true"></span>
-              <span data-i18n="landing.heroEyebrow">Now serving Dar es Salaam</span>
-            </span>
-            <h1 class="ts-lp-hero__title">
-              <span data-i18n="landing.heroTitle">Your city's marketplace,</span>
-              <span class="ts-lp-grad" data-i18n="landing.heroTitleAccent">delivered.</span>
-            </h1>
-            <p class="ts-lp-hero__lead" data-i18n="landing.heroLead">
-              Garden connects shoppers, local vendors, and drivers on one trusted platform.
-            </p>
-            <div class="ts-lp-hero__cta">
-              <a class="btn btn--primary btn--lg" href="/shop" data-i18n="landing.heroCtaShop">Start shopping</a>
-              <a class="btn btn--ghost btn--lg" href="/account" data-i18n="landing.heroCtaPartner">Become a partner</a>
-            </div>
-            <p class="ts-lp-hero__note" data-i18n="landing.heroNote">Install as app · Works on any phone · Kiswahili & English</p>
-          </div>
-
-          <div class="ts-lp-hero__visual" aria-hidden="true">
-            <div class="ts-lp-phone">
-              <div class="ts-lp-phone__notch"></div>
-              <div class="ts-lp-phone__screen">
-                <div class="ts-lp-app-top">
-                  <span class="ts-lp-app-brand"><span class="ts-brand-mark ts-brand-mark--sm">G</span> arden</span>
-                  <span class="ts-lp-app-loc">Dar es Salaam</span>
-                </div>
-                <div class="ts-lp-app-card ts-lp-app-card--hero">
-                  <div class="ts-lp-app-art ts-lp-app-art--a">🥬</div>
-                  <div class="ts-lp-app-meta">
-                    <strong>Jiko Fresh Market</strong>
-                    <span>Same-day · 4.9 ★</span>
-                  </div>
-                </div>
-                <div class="ts-lp-app-row">
-                  <div class="ts-lp-app-tile"><span class="ts-lp-app-art ts-lp-app-art--b">🍅</span><span>Tomatoes</span><b>2,500 TZS</b></div>
-                  <div class="ts-lp-app-tile"><span class="ts-lp-app-art ts-lp-app-art--c">🍚</span><span>Rice 5kg</span><b>18,000 TZS</b></div>
-                </div>
-                <div class="ts-lp-app-pay">
-                  <span class="ts-lp-app-paydot"></span>
-                  <span>Paid with M-Pesa</span>
-                  <b>Out for delivery</b>
-                </div>
-              </div>
-            </div>
-            <div class="ts-lp-floater ts-lp-floater--driver">
-              <span class="ts-lp-floater__ic">🛵</span>
-              <div><strong>Asha</strong><span>Driver · 8 min away</span></div>
-            </div>
-            <div class="ts-lp-floater ts-lp-floater--cash">
-              <span class="ts-lp-floater__ic">💸</span>
-              <div><strong>Payout sent</strong><span>+24,500 TZS today</span></div>
-            </div>
+          <p id="lp-hero-brand" class="ts-lp-hero__brand">Garden</p>
+          <h1 class="ts-lp-hero__title">
+            <span data-i18n="landing.heroTitle">Local shops. Same-day delivery.</span>
+          </h1>
+          <p class="ts-lp-hero__lead" data-i18n="landing.heroLead">
+            Groceries and essentials from trusted vendors in Dar es Salaam — paid with mobile money or cash, brought to your door today.
+          </p>
+          <div class="ts-lp-hero__cta">
+            <a class="btn btn--primary btn--lg" href="/shop" data-i18n="landing.heroCtaShop">Start shopping</a>
+            <a class="btn btn--ghost btn--lg ts-lp-hero__cta-secondary" href="/account" data-i18n="landing.heroCtaPartner">Become a partner</a>
           </div>
         </div>
+      </section>
 
-        <!-- STATS -->
-        <div class="ts-lp-stats">
-          <div class="ts-lp-stat">
+      <section class="ts-lp-promise" aria-label="Why Garden">
+        <div class="ts-lp-promise__inner">
+          <div class="ts-lp-promise__item">
             <strong data-i18n="landing.statDeliveryK">Same-day</strong>
             <span data-i18n="landing.statDeliveryV">delivery across Dar</span>
           </div>
-          <div class="ts-lp-stat">
-            <strong data-i18n="landing.statPayK">5 ways</strong>
-            <span data-i18n="landing.statPayV">to pay, incl. cash</span>
+          <div class="ts-lp-promise__item">
+            <strong data-i18n="landing.statPayK">Mobile money &amp; cash</strong>
+            <span data-i18n="landing.statPayV">M-Pesa, Airtel, Mixx, HaloPesa, COD</span>
           </div>
-          <div class="ts-lp-stat">
-            <strong data-i18n="landing.statLocalK">100% local</strong>
-            <span data-i18n="landing.statLocalV">shops & real stock</span>
+          <div class="ts-lp-promise__item">
+            <strong data-i18n="landing.statLocalK">Local vendors</strong>
+            <span data-i18n="landing.statLocalV">real stock from nearby shops</span>
           </div>
         </div>
       </section>
 
-      <!-- PILLARS -->
       <section class="ts-lp-section">
         <div class="ts-lp-section__head">
-          <h2 data-i18n="landing.pillarsTitle">One platform, three ways to win</h2>
-          <p data-i18n="landing.pillarsLead">Whether you're buying, selling, or earning — Garden is built for how Tanzania actually shops.</p>
+          <h2 data-i18n="landing.pillarsTitle">Built for how Tanzania shops</h2>
+          <p data-i18n="landing.pillarsLead">One platform for customers, shops, and drivers — clear roles, clear payouts, no guesswork.</p>
         </div>
-        <div class="ts-lp-pillars">
-          <article class="ts-lp-pillar ts-lp-pillar--shop">
-            <span class="ts-lp-pillar__tag" data-i18n="landing.shopperTag">For shoppers</span>
-            <div class="ts-lp-pillar__ic">🛒</div>
-            <h3 data-i18n="landing.shopperTitle">Shop local, delivered today</h3>
-            <p data-i18n="landing.shopperDesc">Browse real inventory from trusted shops near you.</p>
-            <ul class="ts-lp-checks">
-              <li data-i18n="landing.shopperB1">Same-day delivery in Dar es Salaam</li>
-              <li data-i18n="landing.shopperB2">M-Pesa, Airtel, Tigo, HaloPesa or cash</li>
-              <li data-i18n="landing.shopperB3">Live order tracking & support</li>
-            </ul>
-            <a class="ts-lp-pillar__cta" href="/shop"><span data-i18n="landing.shopperCta">Start shopping</span> →</a>
+        <div class="ts-lp-roles">
+          <article class="ts-lp-role">
+            <p class="ts-lp-role__label" data-i18n="landing.shopperTag">Shoppers</p>
+            <h3 data-i18n="landing.shopperTitle">Order from local shops</h3>
+            <p data-i18n="landing.shopperDesc">Browse real inventory, pay your way, and track delivery to your door.</p>
+            <a class="ts-lp-role__link" href="/shop"><span data-i18n="landing.shopperCta">Start shopping</span></a>
           </article>
-
-          <article class="ts-lp-pillar ts-lp-pillar--sell">
-            <span class="ts-lp-pillar__tag" data-i18n="landing.vendorTag">For vendors</span>
-            <div class="ts-lp-pillar__ic">🏪</div>
-            <h3 data-i18n="landing.vendorTitle">Grow your shop online</h3>
-            <p data-i18n="landing.vendorDesc">List your products, manage orders, and reach more customers.</p>
-            <ul class="ts-lp-checks">
-              <li data-i18n="landing.vendorB1">Free storefront & catalogue tools</li>
-              <li data-i18n="landing.vendorB2">Same-day payouts to mobile money</li>
-              <li data-i18n="landing.vendorB3">Real-time orders, stock & earnings</li>
-            </ul>
-            <a class="ts-lp-pillar__cta" href="/account#vendor"><span data-i18n="landing.vendorCta">Sell on Garden</span> →</a>
+          <article class="ts-lp-role">
+            <p class="ts-lp-role__label" data-i18n="landing.vendorTag">Vendors</p>
+            <h3 data-i18n="landing.vendorTitle">Sell online without the complexity</h3>
+            <p data-i18n="landing.vendorDesc">List products, manage orders, and receive mobile-money payouts.</p>
+            <a class="ts-lp-role__link" href="/account#vendor"><span data-i18n="landing.vendorCta">Sell on Garden</span></a>
           </article>
-
-          <article class="ts-lp-pillar ts-lp-pillar--drive">
-            <span class="ts-lp-pillar__tag" data-i18n="landing.driverTag">For drivers</span>
-            <div class="ts-lp-pillar__ic">🛵</div>
-            <h3 data-i18n="landing.driverTitle">Earn on your schedule</h3>
-            <p data-i18n="landing.driverDesc">Deliver orders in your area and get paid for every trip.</p>
-            <ul class="ts-lp-checks">
-              <li data-i18n="landing.driverB1">Flexible hours, work when you want</li>
-              <li data-i18n="landing.driverB2">Transparent per-delivery earnings</li>
-              <li data-i18n="landing.driverB3">Verified, safe community of drivers</li>
-            </ul>
-            <a class="ts-lp-pillar__cta" href="/account#driver"><span data-i18n="landing.driverCta">Drive with Garden</span> →</a>
+          <article class="ts-lp-role">
+            <p class="ts-lp-role__label" data-i18n="landing.driverTag">Drivers</p>
+            <h3 data-i18n="landing.driverTitle">Earn on flexible routes</h3>
+            <p data-i18n="landing.driverDesc">Deliver nearby orders with transparent pay for every completed trip.</p>
+            <a class="ts-lp-role__link" href="/account#driver"><span data-i18n="landing.driverCta">Drive with Garden</span></a>
           </article>
         </div>
       </section>
 
-      <!-- HOW IT WORKS -->
       <section class="ts-lp-section ts-lp-section--how">
         <div class="ts-lp-section__head">
-          <h2 data-i18n="landing.howTitle">How Garden works</h2>
-          <p data-i18n="landing.howLead">From bag to doorstep in three simple steps.</p>
+          <h2 data-i18n="landing.howTitle">How it works</h2>
+          <p data-i18n="landing.howLead">Three clear steps from order to doorstep.</p>
         </div>
-        <div class="ts-lp-steps">
-          <div class="ts-lp-step">
-            <span class="ts-lp-step__num">1</span>
-            <h3 data-i18n="landing.how1Title">Browse & order</h3>
-            <p data-i18n="landing.how1Desc">Pick from local shops and build your bag in seconds.</p>
-          </div>
-          <div class="ts-lp-step">
-            <span class="ts-lp-step__num">2</span>
+        <ol class="ts-lp-steps">
+          <li class="ts-lp-step">
+            <span class="ts-lp-step__num" aria-hidden="true">01</span>
+            <h3 data-i18n="landing.how1Title">Browse &amp; order</h3>
+            <p data-i18n="landing.how1Desc">Choose products from local shops and confirm your address.</p>
+          </li>
+          <li class="ts-lp-step">
+            <span class="ts-lp-step__num" aria-hidden="true">02</span>
             <h3 data-i18n="landing.how2Title">Pay your way</h3>
-            <p data-i18n="landing.how2Desc">Mobile money or cash on delivery — your choice.</p>
-          </div>
-          <div class="ts-lp-step">
-            <span class="ts-lp-step__num">3</span>
-            <h3 data-i18n="landing.how3Title">Delivered today</h3>
-            <p data-i18n="landing.how3Desc">A verified driver brings it to your door, same day.</p>
-          </div>
-        </div>
+            <p data-i18n="landing.how2Desc">Use mobile money or cash on delivery — whichever fits.</p>
+          </li>
+          <li class="ts-lp-step">
+            <span class="ts-lp-step__num" aria-hidden="true">03</span>
+            <h3 data-i18n="landing.how3Title">Receive today</h3>
+            <p data-i18n="landing.how3Desc">A verified driver brings your order the same day.</p>
+          </li>
+        </ol>
       </section>
 
-      <!-- FINAL CTA -->
       <section class="ts-lp-cta">
         <div class="ts-lp-cta__inner">
-          <span class="ts-lp-cta__tag" data-i18n="landing.trustTitle">Built for Tanzania</span>
-          <h2 data-i18n="landing.ctaTitle">Ready to get started?</h2>
-          <p data-i18n="landing.ctaLead">Join thousands shopping, selling, and earning on Garden.</p>
+          <p class="ts-lp-cta__eyebrow" data-i18n="landing.trustTitle">Serving Dar es Salaam</p>
+          <h2 data-i18n="landing.ctaTitle">Start with Garden today</h2>
+          <p data-i18n="landing.ctaLead">Shop local stock, grow your storefront, or earn as a driver — on one trusted platform.</p>
           <div class="ts-lp-cta__btns">
-            <a class="btn btn--light btn--lg" href="/shop" data-i18n="landing.ctaShop">Start shopping</a>
-            <a class="btn btn--outline-light btn--lg" href="/account" data-i18n="landing.ctaPartner">Become a partner</a>
+            <a class="btn btn--primary btn--lg" href="/shop" data-i18n="landing.ctaShop">Start shopping</a>
+            <a class="btn btn--ghost btn--lg" href="/account" data-i18n="landing.ctaPartner">Become a partner</a>
           </div>
         </div>
       </section>
@@ -217,10 +158,7 @@
     <footer class="ts-lp-footer">
       <div class="ts-lp-footer__inner">
         <div class="ts-lp-footer__brand">
-          <a class="ts-brand" href="/">
-            <span class="ts-brand-mark" aria-hidden="true">G</span>
-            <span data-i18n="nav.brand">arden</span>
-          </a>
+          <a class="ts-lp-wordmark" href="/">Garden</a>
           <p data-i18n="landing.footerTagline">Tanzania's marketplace, delivered.</p>
         </div>
         <nav class="ts-lp-footer__links" aria-label="Footer">
@@ -231,7 +169,7 @@
         </nav>
       </div>
       <div class="ts-lp-footer__base">
-        <span>© <span id="lpYear">2026</span> Garden.</span>
+        <span>© <span id="lpYear">2026</span> Garden</span>
         <span data-i18n="landing.footerRights">All rights reserved.</span>
       </div>
     </footer>
@@ -250,10 +188,11 @@
         const yr = document.getElementById("lpYear");
         if (yr) yr.textContent = String(new Date().getFullYear());
         const nav = document.getElementById("lpNav");
-        const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 8);
+        const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 12);
         window.addEventListener("scroll", onScroll, { passive: true });
         onScroll();
         window.TZShop.initInstallPrompt();
+        requestAnimationFrame(() => document.body.classList.add("ts-lp-ready"));
       })();
     </script>
   </body>

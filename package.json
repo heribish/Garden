@@ -9,15 +9,29 @@
     "dev": "node scripts/free-port.js && node --watch src/server.js",
     "test": "node --test test/api.integration.test.js",
     "migrate:commerce": "node scripts/migrate-commerce.js",
-    "create:admin": "node scripts/create-admin.js"
+    "create:admin": "node scripts/create-admin.js",
+    "mobile:config": "node scripts/write-capacitor-config.js",
+    "mobile:sync": "npm run mobile:config && npx cap sync",
+    "mobile:android": "npm run mobile:sync && npx cap open android",
+    "mobile:ios": "npm run mobile:sync && npx cap open ios"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "pg": "^8.20.0",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/ios": "^8.5.1"
   }
 }

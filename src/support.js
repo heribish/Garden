@@ -140,28 +140,65 @@ function publicConversation(c) {
   };
 }
 
+function warnPersist(kind, e) {
+  if (process.env.NODE_ENV === "test") return;
+  // eslint-disable-next-line no-console
+  console.warn(`[garden] Support ${kind} persist failed: ${e?.message || e}`);
+}
+
 async function persistConversation(c) {
   saveDevStore();
   const pool = await ensureDb();
   if (!pool) return;
-  await pool.query(
-    `insert into commerce_support_conversations (id, user_id, status, payload, updated_at)
-     values ($1,$2,$3,$4,$5)
-     on conflict (id) do update set user_id = excluded.user_id, status = excluded.status, payload = excluded.payload, updated_at = excluded.updated_at`,
-    [c.id, c.user_id, c.status, JSON.stringify(c), c.updated_at]
-  );
+  try {
+    await pool.query(
+      `insert into commerce_support_conversations (id, user_id, status, payload, updated_at)
+       values ($1,$2,$3,$4,$5)
+       on conflict (id) do update set user_id = excluded.user_id, status = excluded.status, payload = excluded.payload, updated_at = excluded.updated_at`,
+      [c.id, c.user_id, c.status, JSON.stringify(c), c.updated_at]
+    );
+  } catch (e) {
+    // user_id is unique — recover if memory created a new id for an existing DB row
+    if (e?.code === "23505" && c?.user_id) {
+      try {
+        await pool.query(
+          `update commerce_support_conversations
+           set status = $2, payload = $3, updated_at = $4
+           where user_id = $1`,
+          [c.user_id, c.status, JSON.stringify(c), c.updated_at]
+        );
+        return;
+      } catch (e2) {
+        warnPersist("conversation", e2);
+        return;
+      }
+    }
+    warnPersist("conversation", e);
+  }
 }
 
 async function persistMessage(msg) {
   saveDevStore();
   const pool = await ensureDb();
   if (!pool) return;
-  await pool.query(
-    `insert into commerce_support_messages (id, conversation_id, payload, created_at)
-     values ($1,$2,$3,$4)
-     on conflict (id) do update set payload = excluded.payload`,
-    [msg.id, msg.conversation_id, JSON.stringify(msg), msg.created_at]
-  );
+  try {
+    // Always ensure parent row exists first — avoids FK crashes from racey void persists.
+    const parent = conversations.get(msg.conversation_id);
+    if (parent) await persistConversation(parent);
+    await pool.query(
+      `insert into commerce_support_messages (id, conversation_id, payload, created_at)
+       values ($1,$2,$3,$4)
+       on conflict (id) do update set payload = excluded.payload`,
+      [msg.id, msg.conversation_id, JSON.stringify(msg), msg.created_at]
+    );
+  } catch (e) {
+    warnPersist("message", e);
+  }
+}
+
+async function persistConversationAndMessage(c, msg) {
+  await persistConversation(c);
+  if (msg) await persistMessage(msg);
 }
 
 async function hydrateFromDb() {
@@ -190,7 +227,8 @@ async function hydrateFromDb() {
 
 const hydrateReady = hydrateFromDb().catch(() => {});
 
-export function getOrCreateConversationForUser(user) {
+export async function getOrCreateConversationForUser(user) {
+  await hydrateReady;
   if (!user?.id) throw new Error("Authentication required");
   const existingId = conversationByUser.get(user.id);
   if (existingId && conversations.has(existingId)) {
@@ -198,7 +236,7 @@ export function getOrCreateConversationForUser(user) {
     c.user_name = user.name || c.user_name;
     c.user_phone = user.phone || c.user_phone;
     c.user_email = user.email || c.user_email;
-    void persistConversation(c);
+    await persistConversation(c);
     return c;
   }
   const id = newId("sup");
@@ -226,8 +264,8 @@ export function getOrCreateConversationForUser(user) {
     body: "Karibu! Habari, welcome to Garden support. Tell us what you need help with and our team will reply here.",
   });
   c.unread_for_user = 0;
-  void persistConversation(c);
-  void persistMessage(welcome);
+  // Conversation must land in Postgres before the welcome message (FK).
+  await persistConversationAndMessage(c, welcome);
   return c;
 }
 
@@ -257,20 +295,20 @@ function appendMessageSync(conversationId, { sender_role, sender_name, body }) {
   return msg;
 }
 
-export function postUserMessage(user, body) {
-  const c = getOrCreateConversationForUser(user);
+export async function postUserMessage(user, body) {
+  const c = await getOrCreateConversationForUser(user);
   if (c.status === "closed") c.status = "open";
   const msg = appendMessageSync(c.id, {
     sender_role: "user",
     sender_name: user.name || "Customer",
     body,
   });
-  void persistConversation(c);
-  void persistMessage(msg);
+  await persistConversationAndMessage(c, msg);
   return msg;
 }
 
-export function postAdminMessage(conversationId, admin, body) {
+export async function postAdminMessage(conversationId, admin, body) {
+  await hydrateReady;
   const c = conversations.get(conversationId);
   if (!c) throw new Error("Conversation not found");
   if (c.status === "closed") c.status = "open";
@@ -279,13 +317,13 @@ export function postAdminMessage(conversationId, admin, body) {
     sender_name: admin?.name || "Garden Support",
     body,
   });
-  void persistConversation(c);
-  void persistMessage(msg);
+  await persistConversationAndMessage(c, msg);
   return msg;
 }
 
 /** Soft-delete on the user's side only — message remains for admin history. */
-export function deleteUserMessage(user, messageId) {
+export async function deleteUserMessage(user, messageId) {
+  await hydrateReady;
   if (!user?.id) throw new Error("Authentication required");
   const cid = conversationByUser.get(user.id);
   if (!cid) throw new Error("Conversation not found");
@@ -294,7 +332,7 @@ export function deleteUserMessage(user, messageId) {
   if (!msg) throw new Error("Message not found");
   if (msg.sender_role !== "user") throw new Error("You can only delete your own messages");
   msg.deleted_for_user = true;
-  void persistMessage(msg);
+  await persistMessage(msg);
   saveDevStore();
   return { ok: true, id: msg.id };
 }
@@ -305,30 +343,31 @@ export function listMessages(conversationId, { forUser = false } = {}) {
   return list;
 }
 
-export function getUserThread(user) {
-  // Ensure any async hydrate finished for this request path in production.
-  const c = getOrCreateConversationForUser(user);
+export async function getUserThread(user) {
+  const c = await getOrCreateConversationForUser(user);
   return {
     conversation: publicConversation(c),
     messages: listMessages(c.id, { forUser: true }),
   };
 }
 
-export function markReadForUser(user) {
+export async function markReadForUser(user) {
+  await hydrateReady;
   const id = conversationByUser.get(user.id);
   if (!id) return;
   const c = conversations.get(id);
   if (c) {
     c.unread_for_user = 0;
-    void persistConversation(c);
+    await persistConversation(c);
   }
 }
 
-export function markReadForAdmin(conversationId) {
+export async function markReadForAdmin(conversationId) {
+  await hydrateReady;
   const c = conversations.get(conversationId);
   if (c) {
     c.unread_for_admin = 0;
-    void persistConversation(c);
+    await persistConversation(c);
   }
 }
 
@@ -344,13 +383,14 @@ export function getConversationForAdmin(conversationId) {
   return { conversation: publicConversation(c), messages: listMessages(conversationId, { forUser: false }) };
 }
 
-export function setConversationStatus(conversationId, status) {
+export async function setConversationStatus(conversationId, status) {
+  await hydrateReady;
   const c = conversations.get(conversationId);
   if (!c) throw new Error("Conversation not found");
   if (!["open", "closed"].includes(status)) throw new Error("Invalid status");
   c.status = status;
   c.updated_at = iso();
-  void persistConversation(c);
+  await persistConversation(c);
   return publicConversation(c);
 }
 

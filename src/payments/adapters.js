@@ -9,7 +9,7 @@ import { getMpesaRuntimeConfig } from "../mpesaSettings.js";
 export const adapters = {
   mpesa: makeAdapter("mpesa", "M-Pesa (Vodacom)"),
   airtel_money: makeAdapter("airtel_money", "Airtel Money"),
-  tigo_pesa: makeAdapter("tigo_pesa", "Tigo Pesa"),
+  tigo_pesa: makeAdapter("tigo_pesa", "Mixx by Yas"),
   halopesa: makeAdapter("halopesa", "HaloPesa"),
 };
 

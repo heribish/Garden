@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" data-i18n="meta.description" content="Order groceries and essentials in Dar es Salaam — same-day delivery, M-Pesa, and cash on delivery." />
     <meta name="theme-color" content="#0d9488" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="garden" />
     <title data-i18n="meta.title">garden — Groceries & delivery in Dar</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -36,6 +40,7 @@
           <option value="sw">Kiswahili</option>
           <option value="en">English</option>
         </select>
+        <button type="button" class="btn btn--ghost btn--sm" id="btnInstallApp" data-i18n="nav.install" hidden>Install app</button>
         <button type="button" class="ts-account-btn" id="btnAuthOpen" aria-haspopup="dialog" aria-controls="authModal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M20 21a8 8 0 1 0-16 0" />
@@ -233,7 +238,7 @@
         <span class="ts-hero__eyebrow" data-i18n="hero.eyebrow">MVP demo</span>
         <h1 id="hero-title" data-i18n="hero.title">Everything you need, delivered in Dar</h1>
         <p id="heroDesc">
-          <span data-i18n="hero.descBefore">Browse real inventory from a demo store (</span><strong id="storeName">Jiko Fresh Market</strong><span data-i18n="hero.descAfter">): pay with M-Pesa, Airtel Money, Tigo Pesa, HaloPesa, or cash on delivery. This flow is wired to the same API your production backend would use.</span>
+          <span data-i18n="hero.descBefore">Browse real inventory from a demo store (</span><strong id="storeName">Garden</strong><span data-i18n="hero.descAfter">): pay with M-Pesa, Airtel Money, Mixx by Yas, HaloPesa, or cash on delivery. This flow is wired to the same API your production backend would use.</span>
         </p>
         <div class="ts-trust" role="list">
           <span role="listitem" data-i18n="hero.trustPrices">Prices in TZS</span>
@@ -326,7 +331,7 @@
                 <option value="mpesa" selected>M-Pesa</option>
                 <option value="cod">Cash on delivery</option>
                 <option value="airtel_money">Airtel Money</option>
-                <option value="tigo_pesa">Tigo Pesa</option>
+                <option value="tigo_pesa">Mixx by Yas</option>
                 <option value="halopesa">HaloPesa</option>
               </select>
             </div>
@@ -663,18 +668,15 @@
         if (activeVendor) $("storeName").textContent = activeVendor.name;
       }
 
-      async function refreshCatalogForLocation({ clearCartIfVendorChange = true } = {}) {
-        const loc = getCustomerLocation();
-        const params = new URLSearchParams();
-        params.set("city_id", loc.cityId);
-        params.set("city", loc.city);
-        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
-          params.set("lat", String(loc.lat));
-          params.set("lng", String(loc.lng));
-        }
-        const r = await api(`/api/products?${params}`);
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error || "Could not load products");
+      async function fetchProductsPayload(searchParams) {
+        const qs = searchParams?.toString?.() ? `?${searchParams}` : "";
+        const r = await api(`/api/products${qs}`);
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || t("toast.catalogFail"));
+        return j;
+      }
+
+      function applyCatalogPayload(j, { clearCartIfVendorChange = true, loc } = {}) {
         const nextVendor = j.vendor || (j.vendors && j.vendors[0]) || null;
         if (clearCartIfVendorChange && activeVendor && nextVendor && activeVendor.id !== nextVendor.id && cart.size) {
           cart.clear();
@@ -682,9 +684,15 @@
         }
         activeVendor = nextVendor;
         products = j.products || [];
+        if (!activeVendor && products[0]?.vendor_id) {
+          activeVendor = {
+            id: products[0].vendor_id,
+            name: products[0].vendor_name || products[0].vendor_id,
+          };
+        }
         if (!products.length) {
           $("productGrid").innerHTML = `<p class="ts-muted" style="grid-column:1/-1;color:var(--tz-muted)">${window.TZShop.esc(
-            t("menu.noNearby", { city: loc.city })
+            t("menu.noNearby", { city: loc?.city || t("checkout.city") })
           )}</p>`;
         } else {
           renderProducts();
@@ -692,6 +700,41 @@
         updateLocationUI();
         renderCart();
         return j;
+      }
+
+      async function refreshCatalogForLocation({ clearCartIfVendorChange = true } = {}) {
+        const loc = getCustomerLocation();
+        const params = new URLSearchParams();
+        params.set("city_id", loc.cityId || "dar");
+        params.set("city", loc.city || "Dar es Salaam");
+        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+          params.set("lat", String(loc.lat));
+          params.set("lng", String(loc.lng));
+        }
+
+        let j = await fetchProductsPayload(params);
+        // If this city has no open shops yet, still show the full catalog so the shop never looks broken.
+        if (!(j.products || []).length) {
+          j = await fetchProductsPayload(new URLSearchParams());
+        }
+        return applyCatalogPayload(j, { clearCartIfVendorChange, loc });
+      }
+
+      async function ensureCatalogLoaded({ attempts = 5 } = {}) {
+        $("productGrid").innerHTML = `<p class="ts-muted" style="grid-column:1/-1;color:var(--tz-muted)">${window.TZShop.esc(
+          t("menu.loading")
+        )}</p>`;
+        let lastErr;
+        for (let i = 0; i < attempts; i++) {
+          try {
+            await refreshCatalogForLocation({ clearCartIfVendorChange: false });
+            return;
+          } catch (err) {
+            lastErr = err;
+            await new Promise((r) => setTimeout(r, 450 * (i + 1)));
+          }
+        }
+        throw lastErr || new Error(t("toast.catalogFail"));
       }
 
       function onLanguageChanged() {
@@ -935,6 +978,22 @@
         return refreshCatalogForLocation({ clearCartIfVendorChange: false });
       }
 
+      let catalogReloadTimer = null;
+      function scheduleCatalogReload() {
+        if (catalogReloadTimer) clearTimeout(catalogReloadTimer);
+        catalogReloadTimer = setTimeout(() => {
+          ensureCatalogLoaded({ attempts: 3 }).catch(() => {});
+        }, 250);
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") scheduleCatalogReload();
+      });
+      window.addEventListener("pageshow", (ev) => {
+        if (ev.persisted) scheduleCatalogReload();
+      });
+      window.addEventListener("focus", scheduleCatalogReload);
+
       function updatePartnerNav(user) {
         const vend = $("navVendor");
         const drv = $("navDriver");
@@ -1120,11 +1179,7 @@
         resizeT = setTimeout(() => renderCart(), 150);
       });
 
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations().then((regs) => {
-          regs.forEach((r) => r.unregister());
-        }).catch(() => {});
-      }
+      window.TZShop.initInstallPrompt();
 
       $("langSelect").addEventListener("change", () => window.TZShop.setLang($("langSelect").value));
       window.TZShop.onLangChange(() => {
@@ -1368,14 +1423,19 @@
         openAuthModal("signin");
       }
 
-      loadProducts()
+      ensureCatalogLoaded()
         .then(async () => {
           renderCart();
           await refreshMe();
         })
-        .catch((e) => {
-          $("productGrid").innerHTML = `<p style="color:#b91c1c;grid-column:1/-1">${String(e)}</p>`;
-          window.TZShop.showToast(t("toast.catalogFail"), "err");
+        .catch((err) => {
+          const detail = String(err?.message || "").trim();
+          const msg =
+            /can't reach the server|failed to fetch|networkerror/i.test(detail)
+              ? t("toast.serverDown")
+              : detail || t("toast.catalogFail");
+          $("productGrid").innerHTML = `<p style="color:#b91c1c;grid-column:1/-1">${window.TZShop.esc(msg)}</p>`;
+          window.TZShop.showToast(msg, "err");
         });
-    </script>npm run dev
+    </script>
   

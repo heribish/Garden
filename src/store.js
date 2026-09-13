@@ -196,10 +196,10 @@ function seed() {
   const shopSeeds = [
     {
       id: "v1",
-      name: "Jiko Fresh Market",
+      name: "Garden",
       city_id: "dar",
       zone: "Central",
-      pickup_label: "Jiko Fresh Market, Dar es Salaam",
+      pickup_label: "Garden, Dar es Salaam",
       pickup_lat: -6.7924,
       pickup_lng: 39.2083,
       shop_phone: "255755000001",
@@ -1609,7 +1609,7 @@ const vendorNotifications = new Map();
 const WALLET_PROVIDER_LABELS = {
   mpesa: "M-Pesa",
   airtel_money: "Airtel Money",
-  tigo_pesa: "Tigo Pesa",
+  tigo_pesa: "Mixx by Yas",
   halopesa: "HaloPesa",
 };
 

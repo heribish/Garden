@@ -73,10 +73,15 @@
 
   function apiFetch(path, options = {}) {
     return fetch(path, {
+      ...options,
       credentials: "same-origin",
       cache: "no-store",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-      ...options,
+    }).catch((err) => {
+      if (err instanceof TypeError) {
+        throw new Error("Can't reach the server. Is it running?");
+      }
+      throw err;
     });
   }
 
@@ -102,10 +107,19 @@
   }
 
   let deferredInstallPrompt = null;
+  let installPromptReady = false;
+
+  function isStandaloneApp() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
 
   function initInstallPrompt(buttonId = "btnInstallApp") {
     const btn = document.getElementById(buttonId);
-    if (!btn) return;
+    if (!btn || installPromptReady) return;
+    installPromptReady = true;
 
     const show = () => {
       btn.hidden = false;
@@ -114,6 +128,11 @@
       btn.hidden = true;
     };
 
+    if (isStandaloneApp()) {
+      hide();
+      return;
+    }
+
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
@@ -121,11 +140,21 @@
     });
 
     btn.addEventListener("click", async () => {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      const { outcome } = await deferredInstallPrompt.userChoice;
-      deferredInstallPrompt = null;
-      if (outcome === "accepted") hide();
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        if (outcome === "accepted") hide();
+        return;
+      }
+      // Fallback when the browser didn't fire beforeinstallprompt (common until SW is ready).
+      const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const msg = isiOS
+        ? t("nav.installHowIos") || "On iPhone: Share → Add to Home Screen"
+        : t("nav.installHowDesktop") ||
+          "Use the install icon in the address bar, or browser menu → Install garden";
+      showToast(msg, "info");
+      show();
     });
 
     window.addEventListener("appinstalled", () => {
@@ -134,7 +163,11 @@
       showToast(t("nav.installDone") || "App installed", "success");
     });
 
-    if (window.matchMedia("(display-mode: standalone)").matches) hide();
+    // Show the button after a short delay so users can still open install help
+    // even if beforeinstallprompt is delayed or unavailable.
+    setTimeout(() => {
+      if (!isStandaloneApp() && !deferredInstallPrompt) show();
+    }, 1800);
   }
 
   function registerServiceWorker() {
@@ -145,6 +178,13 @@
   }
 
   registerServiceWorker();
+
+  // Auto-wire install on any page that includes #btnInstallApp
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initInstallPrompt());
+  } else {
+    initInstallPrompt();
+  }
 
   /** Downscale an image file to a compact JPEG data URL (stays under API body limit). */
   function fileToDataUrl(file, maxDim = 480, quality = 0.78) {

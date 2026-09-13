@@ -1,0 +1,29 @@
+{
+  "appId": "tz.garden.app",
+  "appName": "garden",
+  "webDir": "mobile/www",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#0d9488",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#0d9488",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0d9488"
+    }
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile"
+  }
+}

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { transitionOrder } from "./orderMachine.js";
-import { appendLedgerSale, getAllOrders, getOrder, getVendor } from "./store.js";
+import { appendLedgerSale, getAllOrders, getOrder, getVendor, isOrderPaid } from "./store.js";
 import { calculateDeliveryFare, fareClassFromVehicleType } from "./fare.js";
 
 export const OFFER_SECONDS = 30;
@@ -347,6 +347,8 @@ function listIdleOnlineDrivers() {
 function listJobsNeedingDrivers() {
   return [...jobs.values()].filter((j) => {
     if (j.driver_id) return false;
+    const order = getOrder(j.order_id);
+    if (!order || !isOrderPaid(order) || order.status !== "ready_for_pickup") return false;
     if (j.status === "offered") {
       if (j.offer_expires_at && new Date(j.offer_expires_at) < new Date()) return true;
       return false;
@@ -500,6 +502,9 @@ export function setDriverLocation(driverId, lat, lng) {
 
 export function startDispatchForOrder(order) {
   if (!order || order.delivery_job_id) return null;
+  // Pay-before-delivery: never offer a driver job until M-Pesa is confirmed and shop marked ready.
+  if (order.status !== "ready_for_pickup") return null;
+  if (!isOrderPaid(order)) return null;
   const v = getVendor(order.vendor_id);
   if (!v) return null;
   const pickupLat = v.pickup_lat;
@@ -638,13 +643,19 @@ export function respondToOffer(driverId, accept) {
     matchNearestOffers();
     return { ok: true, declined: true };
   }
+  const order = getOrder(job.order_id);
+  if (!order || !isOrderPaid(order)) {
+    throw new Error("Order is not paid — driver can only go after M-Pesa payment");
+  }
+  if (order.status !== "ready_for_pickup") {
+    throw new Error("Order is not ready for pickup");
+  }
   d.offers_accepted += 1;
   job.driver_id = driverId;
   job.offered_driver_id = null;
   job.offer_expires_at = null;
   job.status = "active_pickup";
-  const order = getOrder(job.order_id);
-  if (order) transitionOrder(order, "driver_en_route_pickup");
+  transitionOrder(order, "driver_en_route_pickup");
   matchNearestOffers();
   return { ok: true, job };
 }
@@ -1197,6 +1208,7 @@ export function adminReassignJob(orderId, newDriverId) {
   if (nd.suspended) throw new Error("Target driver suspended");
   const order = getOrder(orderId);
   if (!order) throw new Error("Order not found");
+  if (!isOrderPaid(order)) throw new Error("Order is not paid — cannot assign a driver");
   const ok = new Set(["ready_for_pickup", "driver_en_route_pickup", "driver_en_route_delivery"]);
   if (!ok.has(order.status)) throw new Error("Cannot reassign in this order state");
   clearJobTimer(job);

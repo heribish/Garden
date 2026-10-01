@@ -440,13 +440,13 @@ const orderCreateSchema = z.object({
   dropoff_lat: z.number().finite().optional(),
   dropoff_lng: z.number().finite().optional(),
   items: z.array(z.object({ product_id: z.string().trim().min(1).max(64), qty: z.number().int().min(1).max(999) })).min(1),
-  payment_method: z.enum(["cod", "mpesa", "airtel_money", "tigo_pesa", "halopesa", "bank"]),
+  payment_method: z.enum(["mpesa"]),
   vendor_id: z.string().trim().min(1).max(64),
 });
 
 const paymentInitSchema = z.object({
   order_id: z.string().trim().min(1).max(64),
-  provider: z.enum(["mpesa", "airtel_money", "tigo_pesa", "halopesa"]),
+  provider: z.enum(["mpesa"]),
   msisdn: z.string().trim().min(8).max(20),
   idempotency_key: z.string().trim().min(1).max(128).optional(),
 });
@@ -876,15 +876,8 @@ const server = http.createServer(async (req, res) => {
         ])
       );
       const parsed = parseWithSchema(orderCreateSchema, body);
-      if (parsed.payment_method === "bank" && !isBankCheckoutEnabled()) {
-        return json(res, 503, {
-          error: "Bank transfer checkout is not available. Choose another payment method.",
-        });
-      }
       const order = createOrder({ ...parsed, customer_user_id: actor.id });
-      const bank =
-        parsed.payment_method === "bank" ? getPublicBankCheckout() : undefined;
-      return json(res, 201, { order, ...(bank ? { bank } : {}) });
+      return json(res, 201, { order });
     }
 
     if (req.method === "POST" && url.pathname === "/api/vendor-applications") {
@@ -908,15 +901,15 @@ const server = http.createServer(async (req, res) => {
       requireAuth(actor);
       if (!WALLET_PAYMENTS_ENABLED) {
         return json(res, 503, {
-          error: "Mobile-money payments are not available yet. Please choose cash on delivery.",
+          error: "M-Pesa payments are not available yet. Ask an admin to enable wallet payments.",
         });
       }
       const body = await readBody(req);
       assertAllowedFields(body, new Set(["order_id", "provider", "msisdn", "idempotency_key"]));
       const { order_id, provider, msisdn, idempotency_key } = parseWithSchema(paymentInitSchema, body);
-      if (provider === "mpesa" && !isMpesaCheckoutEnabled()) {
+      if (!isMpesaCheckoutEnabled()) {
         return json(res, 503, {
-          error: "M-Pesa checkout is disabled. Choose cash on delivery or ask an admin to enable M-Pesa in settings.",
+          error: "M-Pesa checkout is disabled. Ask an admin to enable M-Pesa credentials in settings.",
         });
       }
       normalizeMsisdnTz(msisdn);

@@ -1,6 +1,7 @@
 /**
- * Order lifecycle: vendor kitchen + driver delivery.
- * Vendor: … -> ready_for_pickup. Driver: driver_en_route_pickup -> driver_en_route_delivery -> delivered.
+ * Order lifecycle — pay-before-delivery (M-Pesa STK):
+ *   placed → payment_pending → paid → new → preparing → ready_for_pickup → driver… → delivered
+ * Shop packs only after `new` (payment confirmed). Driver is offered only after ready_for_pickup.
  */
 const transitions = {
   placed: ["payment_pending", "cancelled"],

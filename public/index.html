@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" data-i18n="meta.description" content="Order groceries and essentials in Dar es Salaam — same-day delivery, M-Pesa, and cash on delivery." />
+    <meta name="description" data-i18n="meta.description" content="Order groceries and essentials in Dar es Salaam — same-day delivery and M-Pesa." />
     <meta name="theme-color" content="#0d9488" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="garden" />
@@ -238,12 +238,12 @@
         <span class="ts-hero__eyebrow" data-i18n="hero.eyebrow">MVP demo</span>
         <h1 id="hero-title" data-i18n="hero.title">Everything you need, delivered in Dar</h1>
         <p id="heroDesc">
-          <span data-i18n="hero.descBefore">Browse real inventory from a demo store (</span><strong id="storeName">Garden</strong><span data-i18n="hero.descAfter">): pay with M-Pesa, Airtel Money, Mixx by Yas, HaloPesa, or cash on delivery. This flow is wired to the same API your production backend would use.</span>
+          <span data-i18n="hero.descBefore">Browse real inventory from a demo store (</span><strong id="storeName">Garden Market</strong><span data-i18n="hero.descAfter">): pay with M-Pesa. This flow is wired to the same API your production backend would use.</span>
         </p>
         <div class="ts-trust" role="list">
           <span role="listitem" data-i18n="hero.trustPrices">Prices in TZS</span>
-          <span role="listitem" data-i18n="hero.trustMobile">Mobile money ready</span>
-          <span role="listitem" data-i18n="hero.trustCod">COD available</span>
+          <span role="listitem" data-i18n="hero.trustMobile">Pay with M-Pesa</span>
+          <span role="listitem" data-i18n="hero.trustCod">M-Pesa ready</span>
         </div>
       </section>
 
@@ -306,37 +306,49 @@
               <div class="ts-cart__empty" id="cartEmpty" hidden data-i18n="cart.empty">Add items to build your bag.</div>
               <div id="cartLines" hidden></div>
               <div class="ts-cart__total" id="cartTotalRow" hidden>
-                <span data-i18n="cart.subtotal">Subtotal</span>
+                <span data-i18n="cart.subtotal">Total</span>
                 <span id="cartTotal">—</span>
               </div>
-              <div class="ts-cart__total" id="cartFareRow" hidden style="font-weight:500">
+              <div class="ts-cart__total" id="cartFareRow" hidden aria-hidden="true" style="font-weight:500;display:none">
                 <span>
                   <span data-i18n="cart.deliveryFare">Delivery fare</span>
                   <span class="ts-muted" id="cartFareMeta" style="display:block;font-size:0.75rem;font-weight:400"></span>
                 </span>
                 <span id="cartFare">—</span>
               </div>
-              <div class="ts-cart__total" id="cartGrandRow" hidden style="border-top:1px solid var(--tz-border);padding-top:0.45rem;margin-top:0.25rem">
+              <div class="ts-cart__total" id="cartGrandRow" hidden aria-hidden="true" style="display:none;border-top:1px solid var(--tz-border);padding-top:0.45rem;margin-top:0.25rem">
                 <span data-i18n="cart.grandTotal">Total</span>
                 <span id="cartGrandTotal">—</span>
               </div>
             </div>
           </section>
 
-          <section class="ts-checkout-section" id="paymentFields" aria-labelledby="checkoutPaymentHeading">
+          <section class="ts-checkout-section ts-checkout-section--pay" id="paymentFields" aria-labelledby="checkoutPaymentHeading">
             <h3 class="ts-checkout-section__title" id="checkoutPaymentHeading" data-i18n="checkout.sectionPayment">Payment</h3>
-            <div class="ts-field">
-              <label for="pay" data-i18n="checkout.pay">How you’ll pay</label>
-              <select id="pay" aria-describedby="pay-hint">
-                <option value="mpesa" selected>M-Pesa</option>
-                <option value="cod">Cash on delivery</option>
-                <option value="airtel_money">Airtel Money</option>
-                <option value="tigo_pesa">Mixx by Yas</option>
-                <option value="halopesa">HaloPesa</option>
-              </select>
+            <p class="ts-details" style="margin: 0 0 0.65rem; font-size: 0.82rem" data-i18n="checkout.pay">How you’ll pay</p>
+            <div class="ts-pay-methods" role="radiogroup" aria-label="Payment method">
+              <label class="ts-pay-method ts-pay-method--selected ts-pay-method--mpesa">
+                <input type="radio" name="payMethod" id="payMpesa" value="mpesa" checked />
+                <span class="ts-pay-method__logo" aria-hidden="true">M-Pesa</span>
+                <span class="ts-pay-method__body">
+                  <strong class="ts-pay-method__name" data-i18n="checkout.payMpesa">M-Pesa</strong>
+                  <span class="ts-pay-method__desc" data-i18n="checkout.payMpesaEasy">Pay now — shop packs &amp; driver goes only after payment</span>
+                </span>
+                <span class="ts-pay-method__mark" aria-hidden="true">✓</span>
+              </label>
             </div>
-            <p id="pay-hint" class="ts-details" style="margin: -0.25rem 0 0.5rem; font-size: 0.78rem" data-i18n="checkout.payHint">
-              M-Pesa sends a prompt to your phone. Enter your PIN to pay, then we arrange delivery.
+            <select id="pay" class="ts-sr-only" aria-hidden="true" tabindex="-1">
+              <option value="mpesa" selected>M-Pesa</option>
+            </select>
+            <div class="ts-field" style="margin-top: 0.75rem">
+              <label for="payPhone" data-i18n="wallet.msisdn">M-Pesa phone number</label>
+              <input id="payPhone" inputmode="numeric" autocomplete="tel" data-i18n-placeholder="checkout.payPhonePh" placeholder="e.g. 0744 000 000" value="0744000000" />
+              <p class="ts-details" style="margin: 0.35rem 0 0; font-size: 0.75rem" data-i18n="checkout.payPhoneHint">
+                We send the M-Pesa prompt to this number.
+              </p>
+            </div>
+            <p id="pay-hint" class="ts-details" style="margin: 0.55rem 0 0.5rem; font-size: 0.78rem" data-i18n="checkout.payHint">
+              Pay with M-Pesa when you order. After your PIN is confirmed, the shop packs and a driver delivers — not before.
             </p>
             <button type="button" class="btn btn--primary btn--block" id="btnOrder" disabled data-i18n="checkout.payWithMpesa">
               Pay with M-Pesa
@@ -391,7 +403,7 @@
     </div>
 
     <footer class="ts-footer" data-i18n="footer">
-      garden — demonstration storefront · Not a live telco or payments integration
+      Garden Market
     </footer>
 
     <script src="/assets/i18n.js"></script>
@@ -537,41 +549,28 @@
       let walletPaymentsEnabled = true;
 
       function fillPayOptions() {
-        const cur = $("pay").value;
-        const methods = [];
-        if (walletPaymentsEnabled) {
-          methods.push(
-            ["mpesa", "checkout.payMpesa"],
-            ["airtel_money", "checkout.payAirtel"],
-            ["tigo_pesa", "checkout.payTigo"],
-            ["halopesa", "checkout.payHalo"]
-          );
+        // All customer payments go through M-Pesa credentials only.
+        $("pay").innerHTML = `<option value="mpesa">${t("checkout.payMpesa")}</option>`;
+        $("pay").value = "mpesa";
+        const radio = $("payMpesa");
+        if (radio) radio.checked = true;
+        if ($("payPhone") && !$("payPhone").value.trim()) {
+          $("payPhone").value = $("phone")?.value.trim() || "";
         }
-        methods.push(["cod", "checkout.payCod"]);
-        $("pay").innerHTML = methods.map(([v, k]) => `<option value="${v}">${t(k)}</option>`).join("");
-        const preferred = walletPaymentsEnabled ? "mpesa" : "cod";
-        $("pay").value = methods.some(([v]) => v === cur) ? cur : preferred;
         syncPayButtonLabel();
       }
 
       function syncPayButtonLabel() {
-        const method = $("pay").value;
         const btn = $("btnOrder");
         if (!btn) return;
-        if (method === "mpesa") btn.textContent = t("checkout.payWithMpesa");
-        else if (method === "cod") btn.textContent = t("checkout.placeOrderCod");
-        else btn.textContent = t("checkout.payWithWallet");
+        btn.textContent = t("checkout.payWithMpesa");
         syncPayHint();
       }
 
       function syncPayHint() {
-        const method = $("pay")?.value || "mpesa";
         const formHint = $("pay-hint");
         if (!formHint) return;
-        let hintKey = "checkout.payHint";
-        if (method === "cod") hintKey = "checkout.payHintCod";
-        else if (method !== "mpesa") hintKey = "checkout.payHintWallet";
-        formHint.textContent = t(hintKey);
+        formHint.textContent = t("checkout.payHint");
       }
 
       function setPayStatus(state, message) {
@@ -592,7 +591,11 @@
       }
 
       async function initiateStkForOrder(order, provider) {
-        const msisdn = $("msisdn").value.trim() || $("phone").value.trim();
+        const msisdn =
+          $("payPhone")?.value.trim() ||
+          $("msisdn").value.trim() ||
+          $("phone").value.trim();
+        if ($("payPhone")) $("payPhone").value = msisdn;
         $("msisdn").value = msisdn;
         const r = await api("/api/payments/initiate", {
           method: "POST",
@@ -780,59 +783,15 @@
       let fareTimer = null;
 
       async function refreshDeliveryFare() {
-        const empty = cart.size === 0;
-        if (empty) {
-          fareQuote = null;
-          $("cartFareRow").hidden = true;
-          $("cartGrandRow").hidden = true;
-          return;
-        }
-        const vendorId = activeVendor?.id || products[0]?.vendor_id;
-        const loc = getCustomerLocation();
-        if (!vendorId || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
-          $("cartFareRow").hidden = false;
-          $("cartGrandRow").hidden = false;
-          $("cartFare").textContent = "—";
-          $("cartFareMeta").textContent = t("cart.fareNeedLocation");
-          $("cartGrandTotal").textContent = fmt(cartSubtotal());
-          return;
-        }
-        try {
-          const r = await api(
-            `/api/delivery/quote?vendor_id=${encodeURIComponent(vendorId)}&lat=${encodeURIComponent(loc.lat)}&lng=${encodeURIComponent(loc.lng)}&vehicle_class=boda`
-          );
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(j.error || "Fare unavailable");
-          fareQuote = j.quote;
-          const sub = cartSubtotal();
-          $("cartFareRow").hidden = false;
-          $("cartGrandRow").hidden = false;
-          $("cartFare").textContent = fmt(fareQuote.fare_tzs);
-          $("cartFareMeta").textContent = t("cart.fareMeta", {
-            km: fareQuote.distance_km,
-            min: fareQuote.eta_min,
-          });
-          $("cartGrandTotal").textContent = fmt(sub + fareQuote.fare_tzs);
-          const bar = $("cartBar");
-          if (window.innerWidth < 900 && cart.size > 0) {
-            $("cartBarText").textContent = t("cart.itemsBar", {
-              count: cartCount(),
-              total: fmt(sub + fareQuote.fare_tzs),
-            });
-          }
-        } catch (err) {
-          fareQuote = null;
-          $("cartFareRow").hidden = false;
-          $("cartGrandRow").hidden = false;
-          $("cartFare").textContent = "—";
-          $("cartFareMeta").textContent = err.message || t("cart.fareNeedLocation");
-          $("cartGrandTotal").textContent = fmt(cartSubtotal());
-        }
+        // Customers see item prices only — hide delivery fare / fee breakdown.
+        fareQuote = null;
+        $("cartFareRow").hidden = true;
+        $("cartGrandRow").hidden = true;
       }
 
       function scheduleFareRefresh() {
         clearTimeout(fareTimer);
-        fareTimer = setTimeout(() => refreshDeliveryFare(), 350);
+        fareTimer = setTimeout(() => refreshDeliveryFare(), 50);
       }
 
       function renderCart() {
@@ -842,10 +801,10 @@
         $("cartLines").hidden = empty;
         $("cartTotalRow").hidden = empty;
         $("btnOrder").disabled = empty;
+        $("cartFareRow").hidden = true;
+        $("cartGrandRow").hidden = true;
         if (empty) {
           $("cartLines").innerHTML = "";
-          $("cartFareRow").hidden = true;
-          $("cartGrandRow").hidden = true;
         } else {
           $("cartLines").innerHTML = [...cart.values()]
             .map((line) => {
@@ -868,13 +827,11 @@
         const bar = $("cartBar");
         if (window.innerWidth < 900) {
           bar.hidden = empty;
-          const shown = fareQuote ? sub + fareQuote.fare_tzs : sub;
-          $("cartBarText").textContent = t("cart.itemsBar", { count: cartCount(), total: fmt(shown) });
+          $("cartBarText").textContent = t("cart.itemsBar", { count: cartCount(), total: fmt(sub) });
         } else {
           bar.hidden = true;
         }
         updateLocationUI();
-        scheduleFareRefresh();
       }
 
       function addToCart(p) {
@@ -1059,7 +1016,7 @@
           window.TZShop.showToast(t("toast.noNearbyVendor"), "err");
           return;
         }
-        const payment_method = $("pay").value;
+        const payment_method = "mpesa";
         const body = {
           vendor_id: vendorId,
           customer_name: $("cname").value.trim() || "Customer",
@@ -1093,21 +1050,17 @@
             localStorage.setItem("tz_last_city", $("citySelect").value);
           } catch (_) {}
           $("orderId").value = order.id;
-          $("msisdn").value = phone;
+          const mpesaPhone = $("payPhone")?.value.trim() || phone;
+          $("msisdn").value = mpesaPhone;
+          if ($("payPhone")) $("payPhone").value = mpesaPhone;
           lastPayment = null;
           cart.clear();
           renderCart();
 
-          if (payment_method === "cod") {
-            $("walletPanel").hidden = true;
-            window.TZShop.showToast(t("toast.orderCod", { amount: fmt(order.total_tzs) }), "ok");
-            return;
-          }
-
           $("walletPanel").hidden = false;
           setPayStatus("waiting", t("wallet.stkSending"));
           $("walletPanel").scrollIntoView({ behavior: "smooth", block: "start" });
-          await initiateStkForOrder(order, payment_method);
+          await initiateStkForOrder(order, "mpesa");
           window.TZShop.showToast(t("toast.stkSent"), "ok");
         } catch (err) {
           setPayStatus("failed", err.message || t("toast.paymentFail"));
@@ -1123,18 +1076,30 @@
       });
 
       $("phone").addEventListener("change", () => {
-        if (!$("msisdn").value.trim()) $("msisdn").value = $("phone").value.trim();
+        const phone = $("phone").value.trim();
+        if ($("payPhone") && !$("payPhone").value.trim()) $("payPhone").value = phone;
+        if (!$("msisdn").value.trim()) $("msisdn").value = phone;
       });
+      $("phone").addEventListener("input", () => {
+        const phone = $("phone").value.trim();
+        if ($("payPhone") && document.activeElement !== $("payPhone")) {
+          $("payPhone").value = phone;
+        }
+      });
+      if ($("payPhone")) {
+        $("payPhone").addEventListener("change", () => {
+          $("msisdn").value = $("payPhone").value.trim();
+        });
+      }
 
       $("btnInit").addEventListener("click", async () => {
         const order_id = $("orderId").value.trim();
-        const provider = $("pay").value;
         if (!order_id) {
           window.TZShop.showToast(t("toast.placeWalletFirst"), "err");
           return;
         }
         try {
-          await initiateStkForOrder({ id: order_id, total_tzs: lastPayment?.amount_tzs || 0 }, provider);
+          await initiateStkForOrder({ id: order_id, total_tzs: lastPayment?.amount_tzs || 0 }, "mpesa");
         } catch (err) {
           window.TZShop.showToast(err.message || t("toast.paymentFail"), "err");
         }

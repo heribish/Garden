@@ -1208,15 +1208,18 @@
           add("Accept", "", () => doAccept(o.id));
           add("Decline", "danger", () => doDecline(o.id));
         } else if (o.status === "preparing") {
-          add("Mark ready for pickup (starts driver dispatch)", "secondary", () => doAdvance(o.id, "ready_for_pickup"));
+          add("Mark ready for pickup (paid — start driver)", "secondary", () => doAdvance(o.id, "ready_for_pickup"));
         } else if (o.status === "ready_for_pickup") {
           add("Waiting for driver…", "ghost", () => {});
           el.querySelector("button").disabled = true;
         } else if (o.status === "driver_en_route_pickup" || o.status === "driver_en_route_delivery") {
           add("Out with driver — track in driver app", "ghost", () => {});
           el.querySelector("button").disabled = true;
-        } else if (o.status === "placed" || o.status === "payment_pending" || o.status === "paid") {
-          add("Awaiting customer payment", "ghost", () => {});
+        } else if (o.status === "placed" || o.status === "payment_pending") {
+          add("Awaiting M-Pesa payment — do not pack yet", "ghost", () => {});
+          el.querySelector("button").disabled = true;
+        } else if (o.status === "paid") {
+          add("Payment received — opening for accept…", "ghost", () => {});
           el.querySelector("button").disabled = true;
         }
       }

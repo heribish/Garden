@@ -167,7 +167,7 @@ test("account hub exposes orders and driver verification flow", async () => {
         customer_phone: "255744000222",
         dropoff_label: "Plot 8, Oysterbay",
         customer_city: "Dar es Salaam",
-        payment_method: "cod",
+        payment_method: "mpesa",
         items: [{ product_id: "p1", qty: 2 }],
       }),
     });

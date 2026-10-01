@@ -196,10 +196,10 @@ function seed() {
   const shopSeeds = [
     {
       id: "v1",
-      name: "Garden",
+      name: "Garden Market",
       city_id: "dar",
       zone: "Central",
-      pickup_label: "Garden, Dar es Salaam",
+      pickup_label: "Garden Market, Dar es Salaam",
       pickup_lat: -6.7924,
       pickup_lng: 39.2083,
       shop_phone: "255755000001",
@@ -351,7 +351,7 @@ function seedDemoHistory(vendorId) {
         customer_name: "Walk-in customer",
         customer_city: "Dar es Salaam",
         delivery_area: "Kinondoni",
-        payment_method: "cod",
+        payment_method: "mpesa",
         total_tzs: total,
         subtotal_tzs: total,
         delivery_fare_tzs: 0,
@@ -784,7 +784,7 @@ export function createOrder(input) {
     customer_name: String(input.customer_name || "Customer").trim() || "Customer",
     customer_city: String(input.customer_city || "Dar es Salaam").trim() || "Dar es Salaam",
     delivery_area: input.delivery_area ? String(input.delivery_area).trim() : null,
-    payment_method: input.payment_method,
+    payment_method: "mpesa",
     customer_user_id: input.customer_user_id || null,
     subtotal_tzs,
     delivery_fare_tzs,
@@ -805,13 +805,24 @@ export function createOrder(input) {
     delivery_otp: null,
   };
 
-  if (input.payment_method === "cod" || input.payment_method === "bank") {
-    // COD and bank transfer: vendor can start fulfilling; bank customers pay offline.
-    order.status = "new";
-  }
-
+  // Pay-before-delivery: M-Pesa orders stay in `placed` until STK confirms payment.
+  // Vendor packing and driver dispatch only start after status reaches `new` (post-paid).
   orders.set(id, order);
   return order;
+}
+
+/** True once customer M-Pesa (or other wallet) payment is confirmed — required before shop/driver work. */
+export function isOrderPaid(order) {
+  if (!order) return false;
+  if (order.status === "placed" || order.status === "payment_pending") return false;
+  if (order.status === "cancelled" || order.status === "declined") return false;
+  if (order.payment_id) {
+    const p = payments.get(order.payment_id);
+    if (p) return p.status === "paid";
+  }
+  return ["paid", "new", "preparing", "ready_for_pickup", "driver_en_route_pickup", "driver_en_route_delivery", "delivered"].includes(
+    order.status
+  );
 }
 
 /** Preview LATRA-aligned delivery fare from a shop to customer coordinates. */
@@ -886,6 +897,7 @@ export function acceptOrder(vendorId, orderId) {
   const o = orders.get(orderId);
   if (!o || o.vendor_id !== vendorId) throw new Error("Order not found");
   if (o.status !== "new") throw new Error("Order is not incoming");
+  if (!isOrderPaid(o)) throw new Error("Customer must pay with M-Pesa before the shop can accept this order");
 
   for (const line of o.lines) {
     const p = products.get(line.product_id);
@@ -914,6 +926,7 @@ export function advanceVendorOrder(vendorId, orderId, to) {
   if (to !== "ready_for_pickup") {
     throw new Error("Vendors only mark orders ready for pickup; delivery is completed in the driver app.");
   }
+  if (!isOrderPaid(o)) throw new Error("Customer must pay with M-Pesa before driver dispatch");
   if (o.status !== "preparing") {
     throw new Error(`Order must be preparing (currently ${o.status})`);
   }

@@ -830,6 +830,109 @@ a:hover {
   border: 1px solid var(--tz-border);
   border-radius: 14px;
 }
+.ts-checkout-section--pay {
+  margin-top: 0.35rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  border-radius: var(--tz-radius-sm);
+  background: linear-gradient(180deg, rgba(240, 253, 250, 0.95), var(--tz-elev, #fff));
+}
+.ts-skin-dark .ts-checkout-section--pay {
+  background: linear-gradient(180deg, rgba(13, 148, 136, 0.12), var(--tz-elev, #111827));
+  border-color: rgba(45, 212, 191, 0.35);
+}
+.ts-pay-methods {
+  display: grid;
+  gap: 0.5rem;
+}
+.ts-pay-method {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.9rem 0.95rem;
+  border: 2px solid #00a651;
+  border-radius: var(--tz-radius-sm);
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.ts-skin-dark .ts-pay-method {
+  background: #0f172a;
+}
+.ts-pay-method input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.ts-pay-method__logo {
+  flex: 0 0 auto;
+  min-width: 4.25rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: #00a651;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.1;
+}
+.ts-pay-method__mark {
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-left: auto;
+  border-radius: 999px;
+  border: 1.5px solid #00a651;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: #00a651;
+}
+.ts-pay-method__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+.ts-pay-method__name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--tz-text);
+}
+.ts-pay-method__desc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--tz-muted, #64748b);
+}
+.ts-pay-method--selected,
+.ts-pay-method:has(input:checked),
+.ts-pay-method--mpesa {
+  border-color: #00a651;
+  background: #f3fcf6;
+  box-shadow: 0 0 0 1px rgba(0, 166, 81, 0.2);
+}
+.ts-skin-dark .ts-pay-method--selected,
+.ts-skin-dark .ts-pay-method:has(input:checked),
+.ts-skin-dark .ts-pay-method--mpesa {
+  background: rgba(0, 166, 81, 0.12);
+}
+.ts-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
 .ts-pay-guide__hint {
   margin: 0 0 0.65rem;
   font-size: 0.82rem;

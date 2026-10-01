@@ -373,11 +373,6 @@
                     ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span class="ts-muted">${TZShop.esc(TZShop.t("cart.subtotal"))}</span><span>${TZShop.esc(TZShop.moneyTzs(o.subtotal_tzs))}</span></div>`
                     : ""
                 }
-                ${
-                  o.delivery_fare_tzs != null
-                    ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span class="ts-muted">${TZShop.esc(TZShop.t("cart.deliveryFare"))}${o.delivery_distance_km != null ? ` · ${o.delivery_distance_km} km` : ""}</span><span>${TZShop.esc(TZShop.moneyTzs(o.delivery_fare_tzs))}</span></div>`
-                    : ""
-                }
               </div>
               <div class="ts-order-card__foot">
                 <span><strong>${TZShop.esc(TZShop.moneyTzs(o.total_tzs))}</strong></span>

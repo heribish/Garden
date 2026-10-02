@@ -672,7 +672,7 @@
       <details style="margin: 1rem 0 0">
         <summary style="cursor: pointer; font-weight: 600; font-size: 0.95rem">Bulk price edit (advanced)</summary>
         <p class="muted" style="margin: 0.5rem 0 0.35rem">
-          Paste a JSON array of <code>product_id</code> and <code>vendor_price_tzs</code> keys (your price before the 10% app fee).
+          Paste a JSON array of <code>product_id</code> and <code>vendor_price_tzs</code> keys (customer pays this; Garden takes 10% from you).
         </p>
         <textarea id="bulkJson" rows="4" style="font-family: ui-monospace, monospace; margin-top: 0.35rem"></textarea>
         <button class="action secondary" type="button" id="btnBulk" style="margin-top: 0.5rem">Apply bulk prices</button>
@@ -737,8 +737,8 @@
       }
 
       function customerPriceFromVendor(vendorPrice) {
-        const base = Math.max(0, Number(vendorPrice) || 0);
-        return Math.round(base + vendorPlatformFee(base));
+        // Customer pays listed price; 10% is taken from the vendor into platform fees.
+        return Math.max(0, Math.round(Number(vendorPrice) || 0));
       }
 
       function fmtTzs(n) {
@@ -755,18 +755,19 @@
         }
         const fee = vendorPlatformFee(vendorPrice);
         const customer = customerPriceFromVendor(vendorPrice);
-        el.innerHTML = `${t("vendor.appFee", { pct: APP_FEE_PCT })}: <strong>${fmtTzs(fee)}</strong> · ${t("vendor.customerPays")}: <strong>${fmtTzs(customer)}</strong>`;
+        const youKeep = Math.max(0, customer - fee);
+        el.innerHTML = `${t("vendor.customerPays")}: <strong>${fmtTzs(customer)}</strong> · ${t("vendor.appFee", { pct: APP_FEE_PCT })}: <strong>${fmtTzs(fee)}</strong> · ${t("vendor.yourPrice")}: <strong>${fmtTzs(youKeep)}</strong>`;
       }
 
       function wholesaleVendorPriceForForm(p) {
         if (p.wholesale_vendor_price_tzs != null) return p.wholesale_vendor_price_tzs;
-        if (p.wholesale_price_tzs) return Math.round(Number(p.wholesale_price_tzs) / 1.1);
+        if (p.wholesale_price_tzs) return Math.round(Number(p.wholesale_price_tzs) || 0);
         return "";
       }
 
       function vendorPriceForForm(p) {
         if (p.vendor_price_tzs != null) return p.vendor_price_tzs;
-        if (p.price_tzs) return Math.round(Number(p.price_tzs) / 1.1);
+        if (p.price_tzs) return Math.round(Number(p.price_tzs) || 0);
         return "";
       }
 
@@ -1403,7 +1404,9 @@
               ? `<span class="ts-tag ts-tag--low">Low: ${p.stock_qty}</span>`
               : `<span class="ts-tag ts-tag--stock">${p.stock_qty} in stock</span>`;
           const bulk = p.wholesale_enabled && p.wholesale_price_tzs > 0 && p.wholesale_min_qty > 0;
-          const vendorPrice = p.vendor_price_tzs != null ? p.vendor_price_tzs : Math.round(Number(p.price_tzs) / 1.1);
+          const vendorPrice = p.vendor_price_tzs != null ? p.vendor_price_tzs : Math.round(Number(p.price_tzs) || 0);
+          const fee = vendorPlatformFee(vendorPrice);
+          const youKeep = Math.max(0, vendorPrice - fee);
           const bulkTag = bulk
             ? `<span class="ts-tag ts-tag--bulk">Bulk ${Number(p.wholesale_price_tzs).toLocaleString()} ×${p.wholesale_min_qty}+</span>`
             : "";
@@ -1417,7 +1420,7 @@
               <p class="ts-prod-card__name">${TZShop.esc(p.name)}${p.unit ? ` <span class="muted" style="font-weight:500">/ ${TZShop.esc(p.unit)}</span>` : ""}</p>
               <p class="ts-prod-card__meta">
                 <strong>${Number(p.price_tzs).toLocaleString()} TZS</strong>
-                <span class="muted" style="display:block;font-size:0.78rem;margin-top:0.15rem">${t("vendor.yourPrice")}: ${Number(vendorPrice).toLocaleString()} TZS · ${t("vendor.appFee", { pct: APP_FEE_PCT })}: ${vendorPlatformFee(vendorPrice).toLocaleString()} TZS</span>
+                <span class="muted" style="display:block;font-size:0.78rem;margin-top:0.15rem">${t("vendor.appFee", { pct: APP_FEE_PCT })}: ${fee.toLocaleString()} TZS · ${t("vendor.yourPrice")}: ${youKeep.toLocaleString()} TZS</span>
               </p>
               <div class="ts-product__tags" style="margin-top:0.35rem">${stockTag}${bulkTag}${brand}${sizeTag}</div>
               <div class="ts-prod-card__row">

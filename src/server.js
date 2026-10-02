@@ -62,6 +62,8 @@ import {
   setCommissionForCategory,
 } from "./store.js";
 import { transitionOrder } from "./orderMachine.js";
+import { getPublicFareRates } from "./fare.js";
+import { getMainStore } from "./mainStore.js";
 import { getAdapter } from "./payments/adapters.js";
 import {
   getMpesaSettings,
@@ -610,6 +612,8 @@ const server = http.createServer(async (req, res) => {
         bank_enabled: isBankCheckoutEnabled(),
         bank: getPublicBankCheckout(),
         delivery_cities: listDeliveryCities(),
+        latra_fare: getPublicFareRates("boda"),
+        main_store: getMainStore(),
       });
     }
     if (req.method === "GET" && url.pathname === "/api/delivery/cities") {

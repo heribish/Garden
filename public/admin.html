@@ -1271,7 +1271,9 @@
           )
           .join("");
         $("finSum").innerHTML = `<div class="ts-kpi-grid" style="margin-bottom:0.6rem">
-            <div class="ts-kpi"><span>Platform fees (ledger)</span><b>${(j.platform_fees_collected_tzs || 0).toLocaleString()} TZS</b></div>
+            <div class="ts-kpi"><span>Platform fees (10% shop + 10% driver)</span><b>${(j.platform_fees_collected_tzs || 0).toLocaleString()} TZS</b>
+              <span class="ts-muted" style="display:block;font-size:0.75rem;margin-top:0.25rem">Vendor ${(j.vendor_platform_fees_tzs || 0).toLocaleString()} · Driver ${(j.driver_platform_fees_tzs || 0).toLocaleString()}</span>
+            </div>
             <div class="ts-kpi"><span>Vendor balances owed</span><b>${(j.vendor_balances_owed_tzs || 0).toLocaleString()} TZS</b></div>
             <div class="ts-kpi"><span>Driver balances owed</span><b>${(j.driver_balances_owed_tzs || 0).toLocaleString()} TZS</b></div>
           </div>

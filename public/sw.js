@@ -1,5 +1,5 @@
 /* garden PWA shell — network-first for pages, cache static assets for offline open */
-const CACHE = "garden-v4-mpesa";
+const CACHE = "garden-v8-fees-ui";
 const PRECACHE = [
   "/",
   "/shop",

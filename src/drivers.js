@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
 import { transitionOrder } from "./orderMachine.js";
-import { appendLedgerSale, getAllOrders, getOrder, getVendor, isOrderPaid } from "./store.js";
+import { appendLedgerSale, getAllOrders, getOrder, getVendor, isOrderPaid, getMainStorePickup } from "./store.js";
 import { calculateDeliveryFare, fareClassFromVehicleType } from "./fare.js";
+import { DRIVER_PLATFORM_FEE_BPS, platformCommissionFromGross } from "./fees.js";
 
 export const OFFER_SECONDS = 30;
-/** Platform share of the delivery fare (10%). Drivers earn the remainder. */
-export const DRIVER_PLATFORM_FEE_BPS = 1000;
+/** Platform share of the delivery fare (10%). Taken from driver earnings → platform fees. */
+export { DRIVER_PLATFORM_FEE_BPS };
 
 const drivers = new Map();
 const jobs = new Map();
@@ -20,10 +21,10 @@ function money(n) {
   return Math.round(n);
 }
 
-/** Split customer delivery fare into platform fee (10%) and driver net pay. */
+/** Split customer delivery fare: 10% → platform fees, 90% → driver. */
 export function splitDriverFare(grossFareTzs) {
   const gross_fare_tzs = money(Math.max(0, Number(grossFareTzs) || 0));
-  const platform_fee_tzs = money((gross_fare_tzs * DRIVER_PLATFORM_FEE_BPS) / 10000);
+  const platform_fee_tzs = platformCommissionFromGross(gross_fare_tzs);
   const earnings_tzs = money(gross_fare_tzs - platform_fee_tzs);
   return {
     gross_fare_tzs,
@@ -507,8 +508,11 @@ export function startDispatchForOrder(order) {
   if (!isOrderPaid(order)) return null;
   const v = getVendor(order.vendor_id);
   if (!v) return null;
-  const pickupLat = v.pickup_lat;
-  const pickupLng = v.pickup_lng;
+  // Drivers always pick up from Kariakoo main store after goods are consolidated there.
+  const hub = getMainStorePickup();
+  const pickupLat = order.pickup_lat ?? hub.lat;
+  const pickupLng = order.pickup_lng ?? hub.lng;
+  const pickupLabel = order.pickup_label || hub.label;
   const dropLat = order.dropoff_lat;
   const dropLng = order.dropoff_lng;
   const distShopToCust = haversineKm(pickupLat, pickupLng, dropLat, dropLng);
@@ -537,7 +541,7 @@ export function startDispatchForOrder(order) {
     offer_generation: 0,
     pointer: 0,
     skipped_driver_ids: [],
-    pickup: { lat: pickupLat, lng: pickupLng, label: v.pickup_label || "Shop" },
+    pickup: { lat: pickupLat, lng: pickupLng, label: pickupLabel },
     dropoff: { lat: dropLat, lng: dropLng, label: order.dropoff_label || "Customer" },
     distance_shop_customer_km: order.delivery_distance_km ?? Math.round(distShopToCust * 100) / 100,
     eta_shop_to_customer_min: order.delivery_eta_min ?? estimateEtaMin(distShopToCust),
@@ -910,12 +914,14 @@ export function getDriverEarnings(driverId) {
   const all = driverLedger.filter((l) => l.driver_id === driverId);
   const signedBalance = all.reduce((s, l) => s + (l.amount_tzs || 0), 0);
   const lifetimeFees = feeRows.reduce((s, r) => s + r.amount_tzs, 0);
+  const platformFees = feeRows.reduce((s, r) => s + (r.meta?.platform_fee_tzs || 0), 0);
   return {
     today_earnings_tzs: today,
     deliveries_completed_today: countToday,
     weekly,
     available_balance_tzs: money(signedBalance),
     total_lifetime_fees_tzs: lifetimeFees,
+    platform_fees_tzs: money(platformFees),
   };
 }
 

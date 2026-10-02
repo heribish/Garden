@@ -239,9 +239,14 @@ export function listOrdersAdmin(filters = {}) {
 
 export function getFinanceSummary() {
   const ledgerRows = getLedger();
-  let platformFees = 0;
+  let vendorPlatformFees = 0;
   for (const l of ledgerRows) {
-    if (l.type === "sale") platformFees += l.fee_tzs;
+    if (l.type === "sale") vendorPlatformFees += l.fee_tzs;
+  }
+  let driverPlatformFees = 0;
+  for (const d of drv.listDrivers()) {
+    const e = drv.getDriverEarnings(d.id);
+    if (e) driverPlatformFees += e.platform_fees_tzs || 0;
   }
   let vendorOwed = 0;
   for (const v of listAllVendors()) {
@@ -254,7 +259,9 @@ export function getFinanceSummary() {
     if (e) driverOwed += e.available_balance_tzs;
   }
   return {
-    platform_fees_collected_tzs: platformFees,
+    platform_fees_collected_tzs: vendorPlatformFees + driverPlatformFees,
+    vendor_platform_fees_tzs: vendorPlatformFees,
+    driver_platform_fees_tzs: driverPlatformFees,
     vendor_balances_owed_tzs: vendorOwed,
     driver_balances_owed_tzs: driverOwed,
     commission_settings: getCommissionSettings(),

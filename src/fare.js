@@ -1,15 +1,18 @@
 /**
- * Delivery fare from shop → customer, aligned with LATRA motorcycle (boda)
- * digital-hire guide bands published for Tanzania.
+ * Delivery fare from shop → customer, calculated automatically from LATRA
+ * (Land Transport Regulatory Authority) digital-hire guide rates for Tanzania.
  *
- * Mid-band motorcycle (≤2 pax) rates used as Garden's default delivery class:
+ * Motorcycle / boda (≤2 pax) — LATRA Jan 2023 notice (still the published hire bands):
+ * - short trip ≤ 1 km: TZS 1,000–1,500 → we use 1,500 (upper mid)
  * - starting / base: TZS 250–350 → 300
  * - per kilometre: TZS 300–400 → 350
  * - per minute: TZS 50–70 → 60
- * - short-trip floor (under ~1 km): TZS 1,500 (within regulated motorcycle band)
  *
- * Sources: LATRA ride-hailing fare notices (2023 guide; 2026 short-trip updates).
- * Rates are configurable via env for ops without a code change.
+ * Formula (auto): max(short-trip floor, base + (km × per_km) + (minutes × per_min))
+ * Distance is measured shop → customer; ETA from average urban speed.
+ *
+ * Source: https://www.latra.go.tz (teksi/pikipiki mtandao nauli).
+ * Override rates via env without a code change.
  */
 
 function envInt(name, fallback) {
@@ -21,11 +24,13 @@ function envInt(name, fallback) {
 
 const TABLES = {
   boda: {
-    label: "Motorcycle / Boda Boda (LATRA guide)",
+    label: "Motorcycle / Boda Boda (LATRA)",
     base_tzs: envInt("FARE_BODA_BASE_TZS", 300),
     per_km_tzs: envInt("FARE_BODA_PER_KM_TZS", 350),
     per_min_tzs: envInt("FARE_BODA_PER_MIN_TZS", 60),
+    /** LATRA short-trip band upper for ≤1 km (2-pax motorcycle). */
     min_trip_tzs: envInt("FARE_BODA_MIN_TZS", 1500),
+    short_trip_max_km: 1,
     avg_speed_kmh: 22,
   },
   bajaji: {
@@ -34,6 +39,7 @@ const TABLES = {
     per_km_tzs: envInt("FARE_BAJAJI_PER_KM_TZS", 550),
     per_min_tzs: envInt("FARE_BAJAJI_PER_MIN_TZS", 80),
     min_trip_tzs: envInt("FARE_BAJAJI_MIN_TZS", 3000),
+    short_trip_max_km: 1,
     avg_speed_kmh: 18,
   },
   car: {
@@ -42,6 +48,7 @@ const TABLES = {
     per_km_tzs: envInt("FARE_CAR_PER_KM_TZS", 900),
     per_min_tzs: envInt("FARE_CAR_PER_MIN_TZS", 90),
     min_trip_tzs: envInt("FARE_CAR_MIN_TZS", 4000),
+    short_trip_max_km: 1,
     avg_speed_kmh: 25,
   },
 };
@@ -66,7 +73,28 @@ function moneyRound100(n) {
   return Math.max(0, Math.round(Number(n) / 100) * 100);
 }
 
+/** Public LATRA rate card (default boda) for shop / ops transparency. */
+export function getPublicFareRates(vehicle_class = "boda") {
+  const cls = TABLES[vehicle_class] ? vehicle_class : "boda";
+  const table = TABLES[cls];
+  return {
+    vehicle_class: cls,
+    vehicle_label: table.label,
+    authority: "LATRA",
+    currency: "TZS",
+    base_tzs: table.base_tzs,
+    per_km_tzs: table.per_km_tzs,
+    per_min_tzs: table.per_min_tzs,
+    min_trip_tzs: table.min_trip_tzs,
+    short_trip_max_km: table.short_trip_max_km,
+    formula: "max(short_trip_floor, base + km×per_km + minutes×per_min)",
+    region: "Dar es Salaam",
+    basis: "LATRA digital-hire guide for Dar es Salaam (motorcycle/taxi mid-band)",
+  };
+}
+
 /**
+ * Automatically calculate delivery fare from distance using LATRA per-km rules.
  * @param {{ distance_km: number, vehicle_class?: FareVehicleClass }} input
  */
 export function calculateDeliveryFare(input = {}) {
@@ -74,10 +102,16 @@ export function calculateDeliveryFare(input = {}) {
   const table = TABLES[vehicle_class];
   const distance_km = Math.round(Math.max(0, Number(input.distance_km) || 0) * 100) / 100;
   const eta_min = estimateEtaMin(distance_km, table.avg_speed_kmh);
+  const shortTrip = distance_km <= table.short_trip_max_km;
+
   const distance_component = table.per_km_tzs * distance_km;
   const time_component = table.per_min_tzs * eta_min;
   const raw = table.base_tzs + distance_component + time_component;
-  const fare_tzs = Math.max(table.min_trip_tzs, moneyRound100(raw));
+
+  // LATRA short-trip band for ≤1 km; longer trips use base + per-km + per-minute, not below floor.
+  const fare_tzs = shortTrip
+    ? table.min_trip_tzs
+    : Math.max(table.min_trip_tzs, moneyRound100(raw));
 
   return {
     vehicle_class,
@@ -86,7 +120,12 @@ export function calculateDeliveryFare(input = {}) {
     eta_min,
     fare_tzs,
     currency: "TZS",
-    basis: "LATRA motorcycle/taxi hire guide (mid-band)",
+    authority: "LATRA",
+    per_km_tzs: table.per_km_tzs,
+    auto_calculated: true,
+    short_trip: shortTrip,
+    region: "Dar es Salaam",
+    basis: "LATRA digital-hire guide for Dar es Salaam (motorcycle/taxi mid-band)",
     breakdown: {
       base_tzs: table.base_tzs,
       per_km_tzs: table.per_km_tzs,
@@ -94,7 +133,9 @@ export function calculateDeliveryFare(input = {}) {
       distance_component_tzs: moneyRound100(distance_component),
       time_component_tzs: moneyRound100(time_component),
       min_trip_tzs: table.min_trip_tzs,
+      short_trip_max_km: table.short_trip_max_km,
       raw_tzs: moneyRound100(raw),
+      applied: shortTrip ? "latra_short_trip_floor" : "latra_base_plus_km_plus_time",
     },
   };
 }

@@ -755,6 +755,11 @@ a:hover {
   background: color-mix(in srgb, var(--tz-teal-600, #0d9488) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--tz-teal-600, #0d9488) 28%, transparent);
 }
+.ts-cart__fee {
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--tz-muted, #64748b);
+}
 .ts-cart__grand {
   border-top: 1px solid var(--tz-border);
   padding-top: 0.55rem;

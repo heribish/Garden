@@ -5,9 +5,10 @@ import { calculateDeliveryFare, fareClassFromVehicleType } from "./fare.js";
 import {
   VENDOR_PLATFORM_FEE_BPS,
   customerPriceFromVendor,
-  platformFeeFromCustomerGross,
+  platformCommissionFromGross,
   vendorPriceFromCustomer,
 } from "./fees.js";
+import { getMainStore, getMainStorePickup, MAIN_STORE } from "./mainStore.js";
 
 /** @typedef {'mpesa' | 'airtel_money' | 'tigo_pesa' | 'halopesa'} WalletProvider */
 /** @typedef {'cod' | WalletProvider} PaymentMethod */
@@ -107,9 +108,9 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** City hubs used to match customers to nearby shops. */
+/** City hubs used to match customers to nearby shops. Dar uses Kariakoo main store. */
 const CITY_HUBS = {
-  dar: { city_id: "dar", city: "Dar es Salaam", lat: -6.7924, lng: 39.2083 },
+  dar: { city_id: "dar", city: "Dar es Salaam", lat: MAIN_STORE.lat, lng: MAIN_STORE.lng },
   arusha: { city_id: "arusha", city: "Arusha", lat: -3.3869, lng: 36.683 },
   mwanza: { city_id: "mwanza", city: "Mwanza", lat: -2.5164, lng: 32.9175 },
   dodoma: { city_id: "dodoma", city: "Dodoma", lat: -6.163, lng: 35.7516 },
@@ -198,10 +199,10 @@ function seed() {
       id: "v1",
       name: "Garden Market",
       city_id: "dar",
-      zone: "Central",
-      pickup_label: "Garden Market, Dar es Salaam",
-      pickup_lat: -6.7924,
-      pickup_lng: 39.2083,
+      zone: "Kariakoo",
+      pickup_label: MAIN_STORE.label,
+      pickup_lat: MAIN_STORE.lat,
+      pickup_lng: MAIN_STORE.lng,
       shop_phone: "255755000001",
       rating_avg: 4.7,
       rating_count: 128,
@@ -382,7 +383,8 @@ function seedDemoHistory(vendorId) {
 }
 
 export function appendLedgerSale(vendorId, orderId, gross_tzs, created_at) {
-  const fee = platformFeeFromCustomerGross(gross_tzs);
+  // 10% of vendor sale gross → platform fees; vendor receives 90%.
+  const fee = platformCommissionFromGross(gross_tzs);
   const net = money(gross_tzs - fee);
   ledger.push({
     id: `led_${crypto.randomBytes(6).toString("hex")}`,
@@ -623,7 +625,7 @@ function withDerivedPricing(p) {
   return p;
 }
 
-/** Shop/catalog view: customer pays vendor base + 10% app fee. Strips internal vendor prices. */
+/** Shop/catalog view: customer pays the vendor listed price. Platform takes 10% from the vendor later. */
 export function toCustomerProduct(p) {
   if (!p) return null;
   const row = { ...p };
@@ -760,19 +762,26 @@ export function createOrder(input) {
   }
 
   const v = vendors.get(input.vendor_id);
-  const dropLat = input.dropoff_lat != null ? Number(input.dropoff_lat) : (v?.pickup_lat ?? -6.8) - 0.02 + Math.random() * 0.01;
-  const dropLng = input.dropoff_lng != null ? Number(input.dropoff_lng) : (v?.pickup_lng ?? 39.21) + 0.02 + Math.random() * 0.01;
+  const hub = getMainStorePickup();
+  const dropLat = input.dropoff_lat != null ? Number(input.dropoff_lat) : hub.lat - 0.02 + Math.random() * 0.01;
+  const dropLng = input.dropoff_lng != null ? Number(input.dropoff_lng) : hub.lng + 0.02 + Math.random() * 0.01;
 
-  const pickupLat = Number(v?.pickup_lat);
-  const pickupLng = Number(v?.pickup_lng);
+  // All Dar orders ship from Kariakoo main store → customer (not from scattered vendor pins).
+  const pickupLat = hub.lat;
+  const pickupLng = hub.lng;
   const distance_km =
-    Number.isFinite(pickupLat) && Number.isFinite(pickupLng) && Number.isFinite(dropLat) && Number.isFinite(dropLng)
+    Number.isFinite(dropLat) && Number.isFinite(dropLng)
       ? Math.round(haversineKm(pickupLat, pickupLng, dropLat, dropLng) * 100) / 100
       : 3;
   const vehicle_class = fareClassFromVehicleType(input.vehicle_class || "Boda Boda");
   const fare = calculateDeliveryFare({ distance_km, vehicle_class });
   const subtotal_tzs = money(total);
   const delivery_fare_tzs = money(fare.fare_tzs);
+  // Customer pays merchandise + delivery fare added on top.
+  // Platform fees (from partners, not extra to customer): 10% of shop sale + 10% of delivery fare.
+  const vendor_platform_fee_tzs = platformCommissionFromGross(subtotal_tzs);
+  const driver_platform_fee_tzs = platformCommissionFromGross(delivery_fare_tzs);
+  const platform_fees_tzs = money(vendor_platform_fee_tzs + driver_platform_fee_tzs);
   const total_tzs = money(subtotal_tzs + delivery_fare_tzs);
 
   const order = {
@@ -788,6 +797,10 @@ export function createOrder(input) {
     customer_user_id: input.customer_user_id || null,
     subtotal_tzs,
     delivery_fare_tzs,
+    vendor_platform_fee_tzs,
+    driver_platform_fee_tzs,
+    platform_fees_tzs,
+    platform_fee_bps: PLATFORM_FEE_BPS,
     delivery_distance_km: fare.distance_km,
     delivery_eta_min: fare.eta_min,
     delivery_fare_basis: fare.basis,
@@ -801,6 +814,10 @@ export function createOrder(input) {
     dropoff_lat: dropLat,
     dropoff_lng: dropLng,
     dropoff_label: String(input.dropoff_label || "").trim() || "Customer drop-off",
+    pickup_lat: pickupLat,
+    pickup_lng: pickupLng,
+    pickup_label: hub.label,
+    fulfillment_hub: "kariakoo",
     delivery_job_id: null,
     delivery_otp: null,
   };
@@ -825,19 +842,17 @@ export function isOrderPaid(order) {
   );
 }
 
-/** Preview LATRA-aligned delivery fare from a shop to customer coordinates. */
+/** Preview LATRA fare from Kariakoo main store → customer. */
 export function quoteDeliveryFare({ vendor_id, dropoff_lat, dropoff_lng, vehicle_class } = {}) {
   const v = vendors.get(String(vendor_id || "").trim());
   if (!v) throw new Error("Vendor not found");
   const dropLat = Number(dropoff_lat);
   const dropLng = Number(dropoff_lng);
-  const pickupLat = Number(v.pickup_lat);
-  const pickupLng = Number(v.pickup_lng);
+  const hub = getMainStorePickup();
+  const pickupLat = hub.lat;
+  const pickupLng = hub.lng;
   if (!Number.isFinite(dropLat) || !Number.isFinite(dropLng)) {
     throw new Error("Customer location is required for fare (use GPS or set city hub)");
-  }
-  if (!Number.isFinite(pickupLat) || !Number.isFinite(pickupLng)) {
-    throw new Error("Shop location is missing");
   }
   const distance_km = Math.round(haversineKm(pickupLat, pickupLng, dropLat, dropLng) * 100) / 100;
   const fare = calculateDeliveryFare({
@@ -846,13 +861,16 @@ export function quoteDeliveryFare({ vendor_id, dropoff_lat, dropoff_lng, vehicle
   });
   return {
     vendor_id: v.id,
-    shop_name: v.name,
-    shop_label: v.pickup_label || v.name,
-    pickup: { lat: pickupLat, lng: pickupLng },
+    shop_name: getMainStore().name,
+    shop_label: hub.label,
+    fulfillment: "Goods consolidate at Kariakoo main store, then deliver to customer",
+    pickup: { lat: pickupLat, lng: pickupLng, label: hub.label, area: hub.area },
     dropoff: { lat: dropLat, lng: dropLng },
     ...fare,
   };
 }
+
+export { getMainStore, getMainStorePickup };
 
 export function getOrder(id) {
   return orders.get(id);

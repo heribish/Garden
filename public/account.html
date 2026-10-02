@@ -367,20 +367,8 @@
                 ${statusPill(o.status)}
               </div>
               <p class="ts-muted">${TZShop.esc(formatDate(o.created_at))} · ${TZShop.esc(o.dropoff_label || "")}</p>
-              <div style="margin:0.35rem 0 0.15rem;font-size:0.82rem;display:grid;gap:0.2rem">
-                ${
-                  o.subtotal_tzs != null
-                    ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span class="ts-muted">${TZShop.esc(TZShop.t("cart.subtotal"))}</span><span>${TZShop.esc(TZShop.moneyTzs(o.subtotal_tzs))}</span></div>`
-                    : ""
-                }
-                ${
-                  o.delivery_fare_tzs != null
-                    ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span class="ts-muted">${TZShop.esc(TZShop.t("cart.deliveryFare"))}</span><span>${TZShop.esc(TZShop.moneyTzs(o.delivery_fare_tzs))}</span></div>`
-                    : ""
-                }
-              </div>
               <div class="ts-order-card__foot">
-                <span><strong>${TZShop.esc(TZShop.moneyTzs(o.total_tzs))}</strong></span>
+                <span><strong>${TZShop.esc(TZShop.t("cart.grandTotal"))}: ${TZShop.esc(TZShop.moneyTzs(o.total_tzs))}</strong></span>
                 <span class="ts-muted">${TZShop.esc(orderStatusLabel(o.status))}</span>
               </div>
             </article>`

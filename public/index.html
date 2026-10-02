@@ -305,32 +305,24 @@
             <div id="cartBody">
               <div class="ts-cart__empty" id="cartEmpty" hidden data-i18n="cart.empty">Add items to build your bag.</div>
               <div id="cartLines" hidden></div>
-              <div class="ts-cart__total" id="cartTotalRow" hidden>
-                <span data-i18n="cart.subtotal">Merchandise</span>
-                <span id="cartTotal">—</span>
+              <!-- Merchandise / fare / 10% fees are admin-only; customer sees total only. -->
+              <div class="ts-cart__total" id="cartTotalRow" hidden aria-hidden="true" style="display:none"></div>
+              <div class="ts-cart__total" id="cartFareRow" hidden aria-hidden="true" style="display:none">
+                <span id="cartFareMeta" hidden></span>
+                <span id="cartFare" hidden></span>
+                <span id="cartTotal" hidden></span>
               </div>
-              <div class="ts-cart__total" id="cartFareRow" hidden style="font-weight:500">
-                <span>
-                  <span data-i18n="cart.deliveryFare">Delivery fare (LATRA, added)</span>
-                  <span class="ts-muted" id="cartFareMeta" style="display:block;font-size:0.75rem;font-weight:400"></span>
-                </span>
-                <span id="cartFare">—</span>
+              <div class="ts-cart__total ts-cart__fee" id="cartShopFeeRow" hidden aria-hidden="true" style="display:none">
+                <span id="cartShopFee" hidden></span>
               </div>
-              <div class="ts-cart__total ts-cart__fee" id="cartShopFeeRow" hidden>
-                <span data-i18n="cart.shopFee">Platform fee from shop (10%)</span>
-                <span id="cartShopFee">—</span>
+              <div class="ts-cart__total ts-cart__fee" id="cartDriverFeeRow" hidden aria-hidden="true" style="display:none">
+                <span id="cartDriverFee" hidden></span>
               </div>
-              <div class="ts-cart__total ts-cart__fee" id="cartDriverFeeRow" hidden>
-                <span data-i18n="cart.driverFee">Platform fee from driver (10%)</span>
-                <span id="cartDriverFee">—</span>
-              </div>
-              <div class="ts-cart__total" id="cartGrandRow" hidden style="border-top:1px solid var(--tz-border);padding-top:0.45rem;margin-top:0.25rem;font-weight:700">
+              <div class="ts-cart__total" id="cartGrandRow" hidden style="padding-top:0.45rem;margin-top:0.25rem;font-weight:700;font-size:1.05rem">
                 <span data-i18n="cart.grandTotal">Total to pay</span>
                 <span id="cartGrandTotal">—</span>
               </div>
-              <p id="cartFeeNote" class="ts-details" hidden style="margin:0.45rem 0 0;font-size:0.72rem" data-i18n="cart.feeNote">
-                You pay merchandise + delivery only. The 10% lines above are taken from the shop and driver into Garden — not added again to your total.
-              </p>
+              <p id="cartFeeNote" class="ts-details" hidden aria-hidden="true" style="display:none"></p>
             </div>
           </section>
 
@@ -792,54 +784,20 @@
 
       let fareQuote = null;
       let fareTimer = null;
-      const PLATFORM_FEE_PCT = 10;
-
-      function platformFeeOf(amount) {
-        return Math.round((Math.max(0, Number(amount) || 0) * PLATFORM_FEE_PCT) / 100);
-      }
-
-      function setPlatformFeeRows(sub, fareTzs) {
-        const shopFee = platformFeeOf(sub);
-        const driverFee = fareTzs != null ? platformFeeOf(fareTzs) : null;
-        const shopRow = $("cartShopFeeRow");
-        const driverRow = $("cartDriverFeeRow");
-        const feeNote = $("cartFeeNote");
-        if (shopRow) {
-          shopRow.hidden = false;
-          $("cartShopFee").textContent = fmt(shopFee);
-        }
-        if (driverRow) {
-          driverRow.hidden = driverFee == null;
-          if (driverFee != null) $("cartDriverFee").textContent = fmt(driverFee);
-        }
-        if (feeNote) feeNote.hidden = false;
-      }
-
-      function hidePlatformFeeRows() {
-        if ($("cartShopFeeRow")) $("cartShopFeeRow").hidden = true;
-        if ($("cartDriverFeeRow")) $("cartDriverFeeRow").hidden = true;
-        if ($("cartFeeNote")) $("cartFeeNote").hidden = true;
-      }
 
       async function refreshDeliveryFare() {
         const empty = cart.size === 0;
         if (empty) {
           fareQuote = null;
-          $("cartFareRow").hidden = true;
           $("cartGrandRow").hidden = true;
-          hidePlatformFeeRows();
           return;
         }
         const vendorId = activeVendor?.id || products[0]?.vendor_id;
         const loc = getCustomerLocation();
         const sub = cartSubtotal();
+        $("cartGrandRow").hidden = false;
         if (!vendorId || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
-          $("cartFareRow").hidden = false;
-          $("cartGrandRow").hidden = false;
-          $("cartFare").textContent = "—";
-          $("cartFareMeta").textContent = t("cart.fareNeedLocation");
           $("cartGrandTotal").textContent = fmt(sub);
-          setPlatformFeeRows(sub, null);
           return;
         }
         try {
@@ -849,31 +807,18 @@
           const j = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(j.error || "Fare unavailable");
           fareQuote = j.quote;
-          $("cartFareRow").hidden = false;
-          $("cartGrandRow").hidden = false;
-          $("cartFare").textContent = fmt(fareQuote.fare_tzs);
-          $("cartFareMeta").textContent = t("cart.fareMeta", {
-            km: fareQuote.distance_km,
-            min: fareQuote.eta_min,
-            perKm: fmt(fareQuote.per_km_tzs || fareQuote.breakdown?.per_km_tzs || 350),
-          });
-          $("cartGrandTotal").textContent = fmt(sub + fareQuote.fare_tzs);
-          setPlatformFeeRows(sub, fareQuote.fare_tzs);
+          const total = sub + fareQuote.fare_tzs;
+          $("cartGrandTotal").textContent = fmt(total);
           const bar = $("cartBar");
           if (window.innerWidth < 900 && cart.size > 0) {
             $("cartBarText").textContent = t("cart.itemsBar", {
               count: cartCount(),
-              total: fmt(sub + fareQuote.fare_tzs),
+              total: fmt(total),
             });
           }
         } catch (err) {
           fareQuote = null;
-          $("cartFareRow").hidden = false;
-          $("cartGrandRow").hidden = false;
-          $("cartFare").textContent = "—";
-          $("cartFareMeta").textContent = err.message || t("cart.fareNeedLocation");
           $("cartGrandTotal").textContent = fmt(sub);
-          setPlatformFeeRows(sub, null);
         }
       }
 
@@ -887,13 +832,10 @@
         const empty = cart.size === 0;
         $("cartEmpty").hidden = true;
         $("cartLines").hidden = empty;
-        $("cartTotalRow").hidden = empty;
         $("btnOrder").disabled = empty;
+        $("cartGrandRow").hidden = empty;
         if (empty) {
           $("cartLines").innerHTML = "";
-          $("cartFareRow").hidden = true;
-          $("cartGrandRow").hidden = true;
-          hidePlatformFeeRows();
         } else {
           $("cartLines").innerHTML = [...cart.values()]
             .map((line) => {
@@ -911,7 +853,8 @@
             </div>`;
             })
             .join("");
-          $("cartTotal").textContent = fmt(sub);
+          const shown = fareQuote ? sub + fareQuote.fare_tzs : sub;
+          $("cartGrandTotal").textContent = fmt(shown);
         }
         const bar = $("cartBar");
         if (window.innerWidth < 900) {

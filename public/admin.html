@@ -477,6 +477,11 @@
               <th>Order</th>
               <th>Bucket</th>
               <th>Status</th>
+              <th>Merchandise</th>
+              <th>Delivery fare</th>
+              <th>Shop fee 10%</th>
+              <th>Driver fee 10%</th>
+              <th>Total to pay</th>
               <th>Vendor</th>
               <th>Driver</th>
               <th>Zone</th>
@@ -953,21 +958,43 @@
         if ($("fFrom").value) q.set("from", $("fFrom").value);
         if ($("fTo").value) q.set("to", $("fTo").value);
         const j = await (await api("/api/admin/orders?" + q.toString())).json();
+        const money = (n) =>
+          n == null || !Number.isFinite(Number(n)) ? "—" : `${Number(n).toLocaleString()} TZS`;
         $("ordRows").innerHTML = (j.orders || [])
-          .map(
-            (o) => `<tr>
-            <td><code>${o.id}</code></td>
-            <td>${o.admin_bucket}</td>
-            <td>${o.status}</td>
-            <td>${o.vendor_id}</td>
-            <td>${o.driver_id || "—"}</td>
-            <td>${o.zone}</td>
+          .map((o) => {
+            const merch = o.subtotal_tzs != null ? Number(o.subtotal_tzs) : null;
+            const fare = o.delivery_fare_tzs != null ? Number(o.delivery_fare_tzs) : null;
+            const shopFee =
+              o.vendor_platform_fee_tzs != null
+                ? Number(o.vendor_platform_fee_tzs)
+                : merch != null
+                  ? Math.round((merch * 10) / 100)
+                  : null;
+            const driverFee =
+              o.driver_platform_fee_tzs != null
+                ? Number(o.driver_platform_fee_tzs)
+                : fare != null
+                  ? Math.round((fare * 10) / 100)
+                  : null;
+            const total = o.total_tzs != null ? Number(o.total_tzs) : merch != null && fare != null ? merch + fare : merch;
+            return `<tr>
+            <td><code>${TZShop.esc(o.id)}</code></td>
+            <td>${TZShop.esc(o.admin_bucket || "")}</td>
+            <td>${TZShop.esc(o.status || "")}</td>
+            <td>${money(merch)}</td>
+            <td>${money(fare)}</td>
+            <td>${money(shopFee)}</td>
+            <td>${money(driverFee)}</td>
+            <td><strong>${money(total)}</strong></td>
+            <td>${TZShop.esc(o.vendor_id || "")}</td>
+            <td>${TZShop.esc(o.driver_id || "—")}</td>
+            <td>${TZShop.esc(o.zone || "")}</td>
             <td>
-              <button type="button" class="small" data-re="${o.id}">Reassign</button>
-              <button type="button" class="small" data-ca="${o.id}">Cancel+refund</button>
+              <button type="button" class="small" data-re="${TZShop.esc(o.id)}">Reassign</button>
+              <button type="button" class="small" data-ca="${TZShop.esc(o.id)}">Cancel+refund</button>
             </td>
-          </tr>`
-          )
+          </tr>`;
+          })
           .join("");
         document.querySelectorAll("[data-re]").forEach((b) =>
           b.addEventListener("click", async () => {
